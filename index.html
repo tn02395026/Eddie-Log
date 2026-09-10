@@ -639,7 +639,7 @@ function renderTaskRow(task, arr){
   top.appendChild(overdueBadge);
 
   function applyOverdueState(){
-    const isOD = !!(task.eventAt && !task.reminderDone && !task.done && triggerAt(task) && triggerAt(task) <= new Date());
+    const isOD = !!(task.eventAt && !task.done && triggerAt(task) && triggerAt(task) <= new Date());
     row.classList.toggle('overdue', isOD);
     overdueBadge.style.display = isOD ? 'inline-flex' : 'none';
   }
@@ -968,7 +968,7 @@ function renderAllTodos(){
     const info = document.createElement('div');
     info.className='info';
     const trig = triggerAt(item.task);
-    const isOverdue = trig && trig <= now && !item.task.reminderDone;
+    const isOverdue = trig && trig <= now;
     const leadText = (item.task.leadH||item.task.leadM) ? `（提前 ${item.task.leadH||0} 小時 ${item.task.leadM||0} 分鐘）` : '';
     const rmdHtml = `<span class="rmd-tag${isOverdue?' overdue':''}">🔔 ${item.task.eventAt.replace('T',' ')}${leadText}${isOverdue?'　⚠️ 已到提醒時間':''}</span>`;
     info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.text||'（未命名項目）')}</span>${rmdHtml}`;
