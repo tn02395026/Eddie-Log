@@ -173,9 +173,13 @@
   .task-expand.show{display:block;}
   .tag-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
   .tag-row .lbl{font-size:0.8em;color:var(--text-light);}
-  .tag-row input{
+  .tag-row select{
     font-family:inherit;font-size:0.82em;border:1px solid var(--mint-dark);border-radius:10px;
     padding:4px 8px;color:var(--text);background:#fbfffd;flex:1;min-width:0;
+  }
+  .tag-manage-chip{
+    display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;
+    color:#fff;font-size:0.82em;font-weight:700;
   }
   .task-detail{
     border:none;width:100%;font-family:inherit;font-size:0.85em;
@@ -273,6 +277,7 @@
       <button class="toggle-btn" id="todoToggle">📋 顯示待辦提醒清單</button>
       <button class="toggle-btn" id="viewModeToggle">🏷️ 依案件檢視</button>
       <button class="toggle-btn" id="hideDoneToggle">👁️ 只看未完成</button>
+      <button class="toggle-btn" id="tagManageToggle">🏷️ 管理標籤</button>
     </div>
 
     <div class="heat-strip" id="heatStrip"></div>
@@ -283,6 +288,16 @@
       <button class="toggle-btn" id="syncApplyBtn" style="padding:6px 12px;">套用</button>
     </div>
     <div id="syncStatus" style="text-align:center;font-size:0.75em;color:var(--text-light);margin-top:6px;"></div>
+  </div>
+
+  <div class="card" id="tagManageCard" style="display:none;">
+    <div style="text-align:center;font-weight:700;color:var(--sea-dark);margin-bottom:8px;">🏷️ 標籤管理</div>
+    <div class="search-row" style="margin-bottom:12px;">
+      <span>＋</span>
+      <input type="text" id="newTagInput" placeholder="輸入新的標籤名稱，例如案名／客戶名稱">
+      <button class="toggle-btn" id="addTagBtn" style="padding:6px 12px;">新增</button>
+    </div>
+    <div id="tagChipList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
   </div>
 
   <div class="card" id="allTodoCard" style="display:none;">
@@ -311,6 +326,45 @@ const activePopupIds = new Set();
 const expandedTaskIds = new Set();
 const weekdays = ['日','一','二','三','四','五','六'];
 const TAG_COLORS = ['#3fb6c9','#4fae82','#e0a951','#ba68c8','#ec6f8e','#7986cb','#8d6e63','#4db6ac'];
+const TAGS_KEY = 'worklog_tags';
+let tagList = JSON.parse(localStorage.getItem(TAGS_KEY) || '[]');
+function saveTags(){ localStorage.setItem(TAGS_KEY, JSON.stringify(tagList)); }
+function getAllTags(){
+  const set = new Set(tagList);
+  Object.values(data).forEach(monthData=>{
+    Object.values(monthData).forEach(arr=>{
+      arr.forEach(t=>{ if(t.tag) set.add(t.tag); });
+    });
+  });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+function renderTagManage(){
+  const box = document.getElementById('tagChipList');
+  box.innerHTML='';
+  const tags = getAllTags();
+  if(tags.length===0){
+    box.innerHTML = '<div class="no-hit">還沒有任何標籤，先新增一個看看吧</div>';
+    return;
+  }
+  tags.forEach(tag=>{
+    const chip = document.createElement('div');
+    chip.className='tag-manage-chip';
+    chip.style.background = tagColor(tag);
+    const label = document.createElement('span');
+    label.textContent = tag;
+    const delBtn = document.createElement('span');
+    delBtn.textContent='✕'; delBtn.style.cursor='pointer'; delBtn.style.opacity='0.85';
+    delBtn.title = '從快速選單移除（不會刪掉已經標記的項目）';
+    delBtn.onclick = ()=>{
+      tagList = tagList.filter(t=>t!==tag);
+      saveTags();
+      renderTagManage();
+    };
+    chip.appendChild(label);
+    chip.appendChild(delBtn);
+    box.appendChild(chip);
+  });
+}
 
 /* ============ 雲端同步設定區 ============ */
 const firebaseConfig = {
@@ -589,11 +643,35 @@ function renderTaskRow(task, arr){
   const tagRow = document.createElement('div');
   tagRow.className = 'tag-row';
   const tagLbl = document.createElement('span'); tagLbl.className='lbl'; tagLbl.textContent='🏷️ 標籤：';
-  const tagInput = document.createElement('input');
-  tagInput.value = task.tag || '';
-  tagInput.placeholder = '例如：案名／客戶名稱';
-  tagInput.onchange = ()=>{ task.tag = tagInput.value.trim(); save(); refreshAll(); };
-  tagRow.appendChild(tagLbl); tagRow.appendChild(tagInput);
+  const tagSelect = document.createElement('select');
+  const noneOpt = document.createElement('option'); noneOpt.value=''; noneOpt.textContent='（不分類）';
+  tagSelect.appendChild(noneOpt);
+  getAllTags().forEach(tagName=>{
+    const opt = document.createElement('option');
+    opt.value = tagName; opt.textContent = tagName;
+    if(task.tag === tagName) opt.selected = true;
+    tagSelect.appendChild(opt);
+  });
+  const newOpt = document.createElement('option'); newOpt.value='__new__'; newOpt.textContent='＋ 新增標籤...';
+  tagSelect.appendChild(newOpt);
+  if(!task.tag) noneOpt.selected = true;
+  tagSelect.onchange = ()=>{
+    if(tagSelect.value === '__new__'){
+      const name = prompt('請輸入新的標籤名稱：');
+      if(name && name.trim()){
+        const t = name.trim();
+        if(!tagList.includes(t)) tagList.push(t);
+        saveTags();
+        task.tag = t;
+        if(typeof showTagManage !== 'undefined' && showTagManage) renderTagManage();
+      }
+      save(); refreshAll();
+      return;
+    }
+    task.tag = tagSelect.value;
+    save(); refreshAll();
+  };
+  tagRow.appendChild(tagLbl); tagRow.appendChild(tagSelect);
   expand.appendChild(tagRow);
 
   const detail = document.createElement('textarea');
@@ -877,6 +955,23 @@ document.getElementById('hideDoneToggle').addEventListener('click', ()=>{
   document.getElementById('hideDoneToggle').classList.toggle('active', hideDone);
   document.getElementById('hideDoneToggle').textContent = hideDone ? '👁️ 顯示全部' : '👁️ 只看未完成';
   refreshAll();
+});
+
+let showTagManage = false;
+document.getElementById('tagManageToggle').addEventListener('click', ()=>{
+  showTagManage = !showTagManage;
+  document.getElementById('tagManageCard').style.display = showTagManage ? 'block' : 'none';
+  document.getElementById('tagManageToggle').classList.toggle('active', showTagManage);
+  if(showTagManage) renderTagManage();
+});
+document.getElementById('addTagBtn').addEventListener('click', ()=>{
+  const input = document.getElementById('newTagInput');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!tagList.includes(val)) tagList.push(val);
+  saveTags();
+  input.value='';
+  renderTagManage();
 });
 
 document.getElementById('searchInput').addEventListener('input', e=>runSearch(e.target.value));
