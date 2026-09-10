@@ -181,6 +181,12 @@
     display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;
     color:#fff;font-size:0.82em;font-weight:700;
   }
+  .tag-color-input{
+    width:20px;height:20px;padding:0;border:2px solid #fff;border-radius:50%;
+    cursor:pointer;background:none;
+  }
+  .tag-color-input::-webkit-color-swatch-wrapper{padding:0;border-radius:50%;}
+  .tag-color-input::-webkit-color-swatch{border:none;border-radius:50%;}
   .task-detail{
     border:none;width:100%;font-family:inherit;font-size:0.85em;
     color:var(--text);background:#fafffd;padding:8px;margin-bottom:8px;
@@ -329,6 +335,9 @@ const TAG_COLORS = ['#3fb6c9','#4fae82','#e0a951','#ba68c8','#ec6f8e','#7986cb',
 const TAGS_KEY = 'worklog_tags';
 let tagList = JSON.parse(localStorage.getItem(TAGS_KEY) || '[]');
 function saveTags(){ localStorage.setItem(TAGS_KEY, JSON.stringify(tagList)); }
+const TAG_COLOR_KEY = 'worklog_tag_colors';
+let tagColors = JSON.parse(localStorage.getItem(TAG_COLOR_KEY) || '{}');
+function saveTagColors(){ localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors)); }
 function getAllTags(){
   const set = new Set(tagList);
   Object.values(data).forEach(monthData=>{
@@ -352,6 +361,17 @@ function renderTagManage(){
     chip.style.background = tagColor(tag);
     const label = document.createElement('span');
     label.textContent = tag;
+    const colorInput = document.createElement('input');
+    colorInput.type='color';
+    colorInput.className='tag-color-input';
+    colorInput.value = tagColor(tag);
+    colorInput.title = '選一個顏色';
+    colorInput.onchange = ()=>{
+      tagColors[tag] = colorInput.value;
+      saveTagColors();
+      renderTagManage();
+      refreshAll();
+    };
     const delBtn = document.createElement('span');
     delBtn.textContent='✕'; delBtn.style.cursor='pointer'; delBtn.style.opacity='0.85';
     delBtn.title = '從快速選單移除（不會刪掉已經標記的項目）';
@@ -361,6 +381,7 @@ function renderTagManage(){
       renderTagManage();
     };
     chip.appendChild(label);
+    chip.appendChild(colorInput);
     chip.appendChild(delBtn);
     box.appendChild(chip);
   });
@@ -472,6 +493,7 @@ function triggerAt(task){
 }
 function tagColor(tag){
   if(!tag) return '#b7c9c5';
+  if(tagColors[tag]) return tagColors[tag];
   let h=0; for(let i=0;i<tag.length;i++) h = (h*31 + tag.charCodeAt(i)) >>> 0;
   return TAG_COLORS[h % TAG_COLORS.length];
 }
