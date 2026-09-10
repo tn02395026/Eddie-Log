@@ -97,7 +97,7 @@
     font-weight:700;font-family:inherit;cursor:pointer;font-size:0.85em;
   }
 
-  .day-block{border-radius:16px;background:var(--mint-light);padding:12px 14px;margin-bottom:12px;
+  .day-block{border-radius:16px;background:var(--mint-light);padding:14px 16px;margin-bottom:16px;
     border:1px solid #d3f0e3;scroll-margin-top:16px;}
   .day-block.flash{animation:flash 1.2s ease;}
   @keyframes flash{0%,100%{background:var(--mint-light);}30%{background:var(--sun);}}
@@ -110,33 +110,42 @@
   }
 
   .task{
-    background:#fff;border-radius:14px;
-    padding:10px 12px;margin-bottom:8px;border:1px solid #dff2ec;
+    background:#fff;border-radius:16px;
+    padding:14px 14px;margin-bottom:14px;border:1px solid #e3f3ed;
+    box-shadow:0 2px 6px rgba(63,182,201,0.06);
   }
   .task.done{opacity:0.55;}
-  .task.done .task-text{text-decoration:line-through;color:var(--done);}
+  .task.done .task-title{text-decoration:line-through;color:var(--done);}
   .task-top{display:flex;align-items:flex-start;gap:10px;}
   .checkbox{
     width:24px;height:24px;flex:0 0 auto;cursor:pointer;border-radius:50%;
     border:2px solid var(--sea);display:flex;align-items:center;justify-content:center;
-    font-size:13px;color:#fff;background:#fff;margin-top:2px;
+    font-size:13px;color:#fff;background:#fff;margin-top:3px;
   }
   .checkbox.checked{background:linear-gradient(135deg,var(--sea),var(--mint-dark));}
   .task-body{flex:1;min-width:0;}
-  .task-text{
-    border:none;width:100%;font-family:inherit;font-size:0.95em;color:var(--text);
-    background:transparent;padding:2px 0;
+  .task-title{
+    border:none;width:100%;font-family:inherit;font-size:1em;font-weight:700;color:var(--text);
+    background:transparent;padding:3px 0;
   }
-  .task-text:focus{outline:none;border-bottom:1.5px solid var(--mint-dark);}
-  .bell-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto;}
+  .task-title:focus{outline:none;border-bottom:1.5px solid var(--mint-dark);}
+  .task-title::placeholder{font-weight:400;color:var(--text-light);}
+  .task-detail{
+    border:none;border-top:1px dashed #dfeee9;width:100%;font-family:inherit;font-size:0.85em;
+    color:var(--text-light);background:transparent;padding:8px 0 0;margin-top:8px;
+    resize:vertical;min-height:36px;line-height:1.5;
+  }
+  .task-detail:focus{outline:none;color:var(--text);}
+  .task-detail::placeholder{color:#b9d3cd;}
+  .bell-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto;margin-top:2px;}
   .bell-btn{
-    width:28px;height:28px;border-radius:50%;border:1.5px solid var(--mint-dark);
-    background:#fbfffd;color:var(--text-light);font-size:0.95em;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;line-height:1;margin-top:1px;
+    width:26px;height:26px;border-radius:50%;border:none;
+    background:transparent;color:var(--text-light);font-size:1em;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;line-height:1;opacity:0.55;
   }
-  .bell-btn.set{background:linear-gradient(135deg,var(--sea),var(--mint-dark));color:#fff;border-color:transparent;}
+  .bell-btn.set{background:var(--sea-light);color:var(--sea-dark);opacity:1;}
   .bell-badge{font-size:0.62em;color:var(--sea-dark);font-weight:700;white-space:nowrap;}
-  .del-btn{background:none;border:none;color:#a9c9c3;cursor:pointer;font-size:1.1em;padding:2px 4px;flex:0 0 auto;}
+  .del-btn{background:none;border:none;color:#c7dcd7;cursor:pointer;font-size:1.05em;padding:2px 4px;flex:0 0 auto;margin-top:2px;}
   .del-btn:hover{color:var(--sea-dark);}
   .empty-hint{color:var(--text-light);font-size:0.82em;padding:2px 0 2px 2px;}
 
@@ -254,12 +263,12 @@ const weekdays = ['日','一','二','三','四','五','六'];
    沒填之前，這個工具照樣可以用，只是不會跨裝置同步。
 */
 const firebaseConfig = {
-  apiKey: "AIzaSyBw-UXlYDlJwK3zJxraQmWnj5eZe5lmPuU",
-  authDomain: "my-worklog-970a5.firebaseapp.com",
-  projectId: "my-worklog-970a5",
-  storageBucket: "my-worklog-970a5.firebasestorage.app",
-  messagingSenderId: "277968948235",
-  appId: "1:277968948235:web:74dc9dff9ec6ff88704b0e"
+  apiKey: "貼上你的 apiKey",
+  authDomain: "貼上你的 authDomain",
+  projectId: "貼上你的 projectId",
+  storageBucket: "貼上你的 storageBucket",
+  messagingSenderId: "貼上你的 messagingSenderId",
+  appId: "貼上你的 appId"
 };
 
 let cloudEnabled = false;
@@ -407,7 +416,7 @@ function renderMonth(){
     addBtn.textContent = '＋';
     addBtn.onclick = ()=>{
       if(!monthData[d]) monthData[d]=[];
-      monthData[d].push({id:Date.now()+Math.random(), text:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
+      monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
       save();
       renderMonth();
     };
@@ -451,11 +460,19 @@ function renderTaskRow(task, monthData, d){
   body.className='task-body';
 
   const text = document.createElement('input');
-  text.className='task-text';
-  text.value = task.text;
-  text.placeholder='工作項目內容...';
+  text.className='task-title';
+  text.value = task.text || '';
+  text.placeholder='專案／任務名稱...';
   text.oninput = ()=>{ task.text = text.value; save(); if(showAllTodo) renderAllTodos(); };
   body.appendChild(text);
+
+  const detail = document.createElement('textarea');
+  detail.className='task-detail';
+  detail.rows = 2;
+  detail.value = task.detail || '';
+  detail.placeholder='細節、備註...';
+  detail.oninput = ()=>{ task.detail = detail.value; save(); };
+  body.appendChild(detail);
 
   // 提醒設定面板（預設收起來，點小鈴鐺才展開）
   const panel = document.createElement('div');
@@ -567,7 +584,9 @@ function runSearch(q){
     const monthData = data[key];
     Object.keys(monthData).map(Number).sort((a,b)=>a-b).forEach(d=>{
       monthData[d].forEach(task=>{
-        if(task.text && task.text.toLowerCase().includes(lower)){
+        const inTitle = task.text && task.text.toLowerCase().includes(lower);
+        const inDetail = task.detail && task.detail.toLowerCase().includes(lower);
+        if(inTitle || inDetail){
           hits.push({y,m,d,task});
         }
       });
