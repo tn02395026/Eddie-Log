@@ -489,7 +489,6 @@ function renderTaskRow(task, monthData, d){
     task.reminderDone = false;
     activePopupIds.delete(String(task.id));
     save(); updateBell();
-    panel.classList.remove('show');
   };
 
   const leadLbl = document.createElement('span');
@@ -499,14 +498,29 @@ function renderTaskRow(task, monthData, d){
   leadGroup.className='lead-group';
   const leadH = document.createElement('input');
   leadH.type='number'; leadH.min='0'; leadH.value = task.leadH||0;
-  leadH.onchange = ()=>{ task.leadH = Number(leadH.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); panel.classList.remove('show'); };
+  leadH.onchange = ()=>{ task.leadH = Number(leadH.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); };
   const hSpan = document.createElement('span'); hSpan.textContent='小時';
   const leadM = document.createElement('input');
   leadM.type='number'; leadM.min='0'; leadM.max='59'; leadM.value = task.leadM||0;
-  leadM.onchange = ()=>{ task.leadM = Number(leadM.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); panel.classList.remove('show'); };
+  leadM.onchange = ()=>{ task.leadM = Number(leadM.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); };
   const mSpan = document.createElement('span'); mSpan.textContent='分鐘';
   leadGroup.appendChild(leadH); leadGroup.appendChild(hSpan);
   leadGroup.appendChild(leadM); leadGroup.appendChild(mSpan);
+
+  const panelBtnRow = document.createElement('div');
+  panelBtnRow.style.display='flex';
+  panelBtnRow.style.gap='12px';
+  panelBtnRow.style.alignItems='center';
+  panelBtnRow.style.width='100%';
+  panelBtnRow.style.marginTop='4px';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className='toggle-btn';
+  confirmBtn.style.margin='0';
+  confirmBtn.style.padding='5px 14px';
+  confirmBtn.style.fontSize='0.8em';
+  confirmBtn.textContent='✅ 完成設定';
+  confirmBtn.onclick = ()=>{ panel.classList.remove('show'); };
 
   const removeBtn = document.createElement('button');
   removeBtn.className='remove-reminder';
@@ -519,9 +533,12 @@ function renderTaskRow(task, monthData, d){
     panel.classList.remove('show');
   };
 
+  panelBtnRow.appendChild(confirmBtn);
+  panelBtnRow.appendChild(removeBtn);
+
   panel.appendChild(lbl); panel.appendChild(dt);
   panel.appendChild(leadLbl); panel.appendChild(leadGroup);
-  panel.appendChild(removeBtn);
+  panel.appendChild(panelBtnRow);
   body.appendChild(panel);
 
   // 小鈴鐺按鈕：平常收合，點了才展開設定面板
