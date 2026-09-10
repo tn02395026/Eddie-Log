@@ -489,6 +489,7 @@ function renderTaskRow(task, monthData, d){
     task.reminderDone = false;
     activePopupIds.delete(String(task.id));
     save(); updateBell();
+    panel.classList.remove('show');
   };
 
   const leadLbl = document.createElement('span');
@@ -498,11 +499,11 @@ function renderTaskRow(task, monthData, d){
   leadGroup.className='lead-group';
   const leadH = document.createElement('input');
   leadH.type='number'; leadH.min='0'; leadH.value = task.leadH||0;
-  leadH.oninput = ()=>{ task.leadH = Number(leadH.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); };
+  leadH.onchange = ()=>{ task.leadH = Number(leadH.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); panel.classList.remove('show'); };
   const hSpan = document.createElement('span'); hSpan.textContent='小時';
   const leadM = document.createElement('input');
   leadM.type='number'; leadM.min='0'; leadM.max='59'; leadM.value = task.leadM||0;
-  leadM.oninput = ()=>{ task.leadM = Number(leadM.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); };
+  leadM.onchange = ()=>{ task.leadM = Number(leadM.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); panel.classList.remove('show'); };
   const mSpan = document.createElement('span'); mSpan.textContent='分鐘';
   leadGroup.appendChild(leadH); leadGroup.appendChild(hSpan);
   leadGroup.appendChild(leadM); leadGroup.appendChild(mSpan);
@@ -710,11 +711,10 @@ function showPopup(item){
   const stack = document.getElementById('popupStack');
   const pop = document.createElement('div');
   pop.className='reminder-popup';
-  const leadText = (t.leadH||t.leadM) ? `（提前 ${t.leadH||0} 小時 ${t.leadM||0} 分鐘）` : '';
   pop.innerHTML = `
     <div class="rp-head">🔔 工作提醒</div>
     <div class="rp-text">${escapeHtml(t.text || '（未命名項目）')}</div>
-    <div class="rp-date">📅 ${item.y}/${item.m}/${item.d}　⏰ ${(t.eventAt||'').replace('T',' ')}${leadText}</div>
+    <div class="rp-date">📅 ${item.y}/${item.m}/${item.d}　⏰ ${(t.eventAt||'').replace('T',' ')}</div>
     <div class="rp-btns">
       <button class="rp-btn confirm">✅ 好，知道了</button>
       <button class="rp-btn snooze">⏳ 延後提醒</button>
