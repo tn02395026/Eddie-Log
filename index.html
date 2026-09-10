@@ -92,10 +92,24 @@
   }
 
   .toggle-btn{
-    display:block;margin:10px auto 0;background:linear-gradient(135deg,var(--sea-light),var(--mint-light));
+    background:linear-gradient(135deg,var(--sea-light),var(--mint-light));
     border:1.5px solid var(--mint-dark);border-radius:16px;padding:7px 16px;color:var(--sea-dark);
     font-weight:700;font-family:inherit;cursor:pointer;font-size:0.85em;
   }
+  .toggle-btn.active{background:linear-gradient(135deg,var(--sea),var(--mint-dark));color:#fff;border-color:transparent;}
+  .btn-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;}
+
+  /* 月曆快速導覽 */
+  .heat-strip{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:12px;}
+  .heat-dot{
+    width:26px;height:26px;border-radius:50%;border:1.5px solid var(--mint-dark);
+    background:#fff;color:var(--text-light);font-size:0.7em;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;position:relative;
+  }
+  .heat-dot.has::after{
+    content:"";position:absolute;bottom:1px;width:4px;height:4px;border-radius:50%;background:var(--sea-dark);
+  }
+  .heat-dot.today{border-color:var(--sea-dark);border-width:2px;font-weight:700;color:var(--sea-dark);}
 
   .day-block{border-radius:16px;background:var(--mint-light);padding:14px 16px;margin-bottom:16px;
     border:1px solid #d3f0e3;scroll-margin-top:16px;}
@@ -108,54 +122,71 @@
     background:linear-gradient(135deg,var(--sea),var(--mint-dark));border:none;color:#fff;
     border-radius:50%;width:28px;height:28px;font-size:1.1em;cursor:pointer;line-height:1;
   }
+  .day-empty-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:6px 4px 6px 2px;margin-bottom:10px;scroll-margin-top:16px;
+  }
+  .day-empty-row .date-label{font-weight:700;color:var(--sea-dark);font-size:0.92em;}
+  .day-empty-row .weekday{font-size:0.78em;color:var(--text-light);margin-left:6px;}
+  .day-empty-row .day-add{width:24px;height:24px;font-size:0.95em;}
 
   .task{
-    background:#fff;border-radius:16px;
-    padding:14px 14px;margin-bottom:14px;border:1px solid #e3f3ed;
-    box-shadow:0 2px 6px rgba(63,182,201,0.06);
+    background:#fff;border-radius:14px;
+    padding:8px 12px;margin-bottom:8px;border:1px solid #e3f3ed;
   }
   .task.done{opacity:0.55;}
   .task.done .task-title{text-decoration:line-through;color:var(--done);}
-  .task-top{display:flex;align-items:flex-start;gap:10px;}
+  .task-top{display:flex;align-items:center;gap:8px;}
   .checkbox{
-    width:24px;height:24px;flex:0 0 auto;cursor:pointer;border-radius:50%;
+    width:22px;height:22px;flex:0 0 auto;cursor:pointer;border-radius:50%;
     border:2px solid var(--sea);display:flex;align-items:center;justify-content:center;
-    font-size:13px;color:#fff;background:#fff;margin-top:3px;
+    font-size:12px;color:#fff;background:#fff;
   }
   .checkbox.checked{background:linear-gradient(135deg,var(--sea),var(--mint-dark));}
-  .task-body{flex:1;min-width:0;}
+  .tag-chip{
+    flex:0 0 auto;font-size:0.68em;font-weight:700;color:#fff;padding:2px 8px;
+    border-radius:999px;white-space:nowrap;
+  }
   .task-title{
-    border:none;width:100%;font-family:inherit;font-size:1em;font-weight:700;color:var(--text);
+    border:none;flex:1;min-width:0;font-family:inherit;font-size:0.95em;font-weight:700;color:var(--text);
     background:transparent;padding:3px 0;
   }
   .task-title:focus{outline:none;border-bottom:1.5px solid var(--mint-dark);}
   .task-title::placeholder{font-weight:400;color:var(--text-light);}
-  .task-detail{
-    border:none;border-top:1px dashed #dfeee9;width:100%;font-family:inherit;font-size:0.85em;
-    color:var(--text-light);background:transparent;padding:8px 0 0;margin-top:8px;
-    resize:vertical;min-height:36px;line-height:1.5;
-  }
-  .task-detail:focus{outline:none;color:var(--text);}
-  .task-detail::placeholder{color:#b9d3cd;}
-  .bell-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto;margin-top:2px;}
+  .bell-wrap{display:flex;flex-direction:column;align-items:center;gap:1px;flex:0 0 auto;}
   .bell-btn{
-    width:26px;height:26px;border-radius:50%;border:none;
-    background:transparent;color:var(--text-light);font-size:1em;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;line-height:1;opacity:0.55;
+    width:24px;height:24px;border-radius:50%;border:none;
+    background:transparent;color:var(--text-light);font-size:0.95em;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;line-height:1;opacity:0.5;
   }
   .bell-btn.set{background:var(--sea-light);color:var(--sea-dark);opacity:1;}
-  .bell-badge{font-size:0.62em;color:var(--sea-dark);font-weight:700;white-space:nowrap;}
-  .del-btn{background:none;border:none;color:#c7dcd7;cursor:pointer;font-size:1.05em;padding:2px 4px;flex:0 0 auto;margin-top:2px;}
+  .bell-badge{font-size:0.6em;color:var(--sea-dark);font-weight:700;white-space:nowrap;}
+  .expand-btn{
+    background:none;border:none;color:var(--text-light);cursor:pointer;font-size:0.85em;
+    padding:2px 4px;flex:0 0 auto;
+  }
+  .del-btn{background:none;border:none;color:#c7dcd7;cursor:pointer;font-size:1.05em;padding:2px 4px;flex:0 0 auto;}
   .del-btn:hover{color:var(--sea-dark);}
   .empty-hint{color:var(--text-light);font-size:0.82em;padding:2px 0 2px 2px;}
 
-  .reminder-panel{
-    display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--mint-dark);
-    flex-wrap:wrap;gap:6px 8px;align-items:center;
+  .task-expand{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #dfeee9;}
+  .task-expand.show{display:block;}
+  .tag-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .tag-row .lbl{font-size:0.8em;color:var(--text-light);}
+  .tag-row input{
+    font-family:inherit;font-size:0.82em;border:1px solid var(--mint-dark);border-radius:10px;
+    padding:4px 8px;color:var(--text);background:#fbfffd;flex:1;min-width:0;
   }
-  .reminder-panel.show{display:flex;}
-  .reminder-panel .lbl{font-size:0.8em;color:var(--text-light);}
-  .reminder-panel input[type=datetime-local]{
+  .task-detail{
+    border:none;width:100%;font-family:inherit;font-size:0.85em;
+    color:var(--text);background:#fafffd;padding:8px;margin-bottom:8px;
+    resize:vertical;min-height:44px;line-height:1.5;border-radius:10px;border:1px solid #eaf6f1;
+  }
+  .task-detail:focus{outline:none;border-color:var(--mint-dark);}
+  .task-detail::placeholder{color:#b9d3cd;}
+  .reminder-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;}
+  .reminder-row .lbl{font-size:0.8em;color:var(--text-light);}
+  .reminder-row input[type=datetime-local]{
     font-family:inherit;font-size:0.78em;border:1px solid var(--mint-dark);border-radius:10px;
     padding:3px 7px;color:var(--text-light);background:#fbfffd;
   }
@@ -168,6 +199,17 @@
   .remove-reminder{
     background:none;border:none;color:var(--coral);font-family:inherit;font-size:0.78em;
     cursor:pointer;text-decoration:underline;padding:2px 4px;
+  }
+  .collapse-link{
+    display:block;text-align:center;margin-top:8px;background:none;border:none;
+    color:var(--text-light);font-family:inherit;font-size:0.78em;cursor:pointer;
+  }
+
+  /* 依案件檢視 */
+  .tag-group{margin-bottom:16px;}
+  .tag-group-head{
+    display:inline-block;font-size:0.85em;font-weight:700;color:#fff;
+    padding:4px 12px;border-radius:999px;margin-bottom:8px;
   }
 
   /* 右下角提醒彈窗 */
@@ -226,11 +268,19 @@
       <input type="text" id="searchInput" placeholder="搜尋所有月份的工作日誌內容...">
     </div>
     <div class="search-results" id="searchResults"></div>
-    <button class="toggle-btn" id="todoToggle">📋 顯示待辦提醒清單</button>
+
+    <div class="btn-row">
+      <button class="toggle-btn" id="todoToggle">📋 顯示待辦提醒清單</button>
+      <button class="toggle-btn" id="viewModeToggle">🏷️ 依案件檢視</button>
+      <button class="toggle-btn" id="hideDoneToggle">👁️ 只看未完成</button>
+    </div>
+
+    <div class="heat-strip" id="heatStrip"></div>
+
     <div class="search-row" style="margin-top:14px;">
       <span>☁️</span>
       <input type="text" id="syncCodeInput" placeholder="雲端同步代碼（兩台裝置輸入同一組即可同步）">
-      <button class="toggle-btn" id="syncApplyBtn" style="margin:0;padding:6px 12px;">套用</button>
+      <button class="toggle-btn" id="syncApplyBtn" style="padding:6px 12px;">套用</button>
     </div>
     <div id="syncStatus" style="text-align:center;font-size:0.75em;color:var(--text-light);margin-top:6px;"></div>
   </div>
@@ -241,6 +291,7 @@
   </div>
 
   <div id="monthView"></div>
+  <div id="tagView" style="display:none;"></div>
 
   <footer>資料預設存在本機瀏覽器；輸入雲端同步代碼並完成 Firebase 設定後即可跨裝置同步</footer>
 </div>
@@ -254,14 +305,14 @@ const SYNC_KEY = 'worklog_sync_code';
 let data = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
 let curYear, curMonth;
 let showAllTodo = false;
+let viewMode = 'date'; // 'date' | 'tag'
+let hideDone = false;
 const activePopupIds = new Set();
+const expandedTaskIds = new Set();
 const weekdays = ['日','一','二','三','四','五','六'];
+const TAG_COLORS = ['#3fb6c9','#4fae82','#e0a951','#ba68c8','#ec6f8e','#7986cb','#8d6e63','#4db6ac'];
 
-/* ============ 雲端同步設定區 ============
-   請到 https://console.firebase.google.com 建立一個專案，
-   新增一個「網頁應用程式」，把拿到的設定值貼到下面取代預設文字。
-   沒填之前，這個工具照樣可以用，只是不會跨裝置同步。
-*/
+/* ============ 雲端同步設定區 ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyBw-UXlYDlJwK3zJxraQmWnj5eZe5lmPuU",
   authDomain: "my-worklog-970a5.firebaseapp.com",
@@ -350,6 +401,7 @@ function save(){
     pushTimer = setTimeout(pushToCloud, 800);
   }
 }
+
 function monthKey(y,m){ return `${y}-${String(m).padStart(2,'0')}`; }
 function ensureMonth(key){ if(!data[key]) data[key]={}; return data[key]; }
 function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
@@ -357,13 +409,20 @@ function pad(n){ return String(n).padStart(2,'0'); }
 function toDatetimeLocal(date){
   return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
-// 計算實際跳出提醒的時間 = 設定的日期時間 - 提前的時數/分鐘數
 function triggerAt(task){
   if(!task.eventAt) return null;
   const base = new Date(task.eventAt);
   const leadMin = (Number(task.leadH)||0)*60 + (Number(task.leadM)||0);
   base.setMinutes(base.getMinutes() - leadMin);
   return base;
+}
+function tagColor(tag){
+  if(!tag) return '#b7c9c5';
+  let h=0; for(let i=0;i<tag.length;i++) h = (h*31 + tag.charCodeAt(i)) >>> 0;
+  return TAG_COLORS[h % TAG_COLORS.length];
+}
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function initControls(){
@@ -380,21 +439,27 @@ function initControls(){
   }
   document.getElementById('yearInput').addEventListener('change', e=>{
     curYear = Number(e.target.value)||now.getFullYear();
-    renderMonth();
+    refreshAll();
   });
   monthSel.addEventListener('change', e=>{
     curMonth = Number(e.target.value);
-    renderMonth();
+    refreshAll();
   });
 }
 
 function refreshAll(){
-  renderMonth();
+  if(viewMode==='date'){
+    renderMonth();
+    renderHeatStrip();
+  } else {
+    renderTagView();
+  }
   if(showAllTodo) renderAllTodos();
   const q = document.getElementById('searchInput').value;
   if(q.trim()) runSearch(q);
 }
 
+/* ---------- 日期檢視 ---------- */
 function renderMonth(){
   const key = monthKey(curYear, curMonth);
   const monthData = ensureMonth(key);
@@ -402,37 +467,47 @@ function renderMonth(){
   const view = document.getElementById('monthView');
   view.innerHTML = '';
   for(let d=1; d<=dim; d++){
+    let tasks = monthData[d] || [];
+    if(hideDone) tasks = tasks.filter(t=>!t.done);
+    const wd = new Date(curYear, curMonth-1, d).getDay();
+
+    if(tasks.length===0){
+      const row = document.createElement('div');
+      row.className = 'day-empty-row';
+      row.id = `day-${curYear}-${curMonth}-${d}`;
+      row.innerHTML = `<div><span class="date-label">${curMonth}/${d}</span><span class="weekday">星期${weekdays[wd]}</span></div>`;
+      const addBtn = document.createElement('button');
+      addBtn.className='day-add'; addBtn.textContent='＋';
+      addBtn.onclick = ()=>{
+        if(!monthData[d]) monthData[d]=[];
+        monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', tag:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
+        save(); refreshAll();
+      };
+      row.appendChild(addBtn);
+      view.appendChild(row);
+      continue;
+    }
+
     const block = document.createElement('div');
     block.className = 'day-block';
     block.id = `day-${curYear}-${curMonth}-${d}`;
 
     const head = document.createElement('div');
     head.className = 'day-head';
-    const wd = new Date(curYear, curMonth-1, d).getDay();
     const label = document.createElement('div');
     label.innerHTML = `<span class="date-label">${curMonth}/${d}</span><span class="weekday">星期${weekdays[wd]}</span>`;
     const addBtn = document.createElement('button');
     addBtn.className = 'day-add';
     addBtn.textContent = '＋';
     addBtn.onclick = ()=>{
-      if(!monthData[d]) monthData[d]=[];
-      monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
-      save();
-      renderMonth();
+      monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', tag:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
+      save(); refreshAll();
     };
     head.appendChild(label);
     head.appendChild(addBtn);
     block.appendChild(head);
 
-    const tasks = monthData[d] || [];
-    if(tasks.length===0){
-      const hint = document.createElement('div');
-      hint.className='empty-hint';
-      hint.textContent = '尚無工作項目';
-      block.appendChild(hint);
-    } else {
-      tasks.forEach(task=> block.appendChild(renderTaskRow(task, monthData, d)));
-    }
+    tasks.forEach(task=> block.appendChild(renderTaskRow(task, monthData[d], task, curYear, curMonth, d)));
     view.appendChild(block);
   }
 }
@@ -444,7 +519,7 @@ function formatBellBadge(eventAt){
   return `${Number(m)}/${Number(dd)} ${timePart||''}`;
 }
 
-function renderTaskRow(task, monthData, d){
+function renderTaskRow(task, arr){
   const row = document.createElement('div');
   row.className = 'task' + (task.done?' done':'');
 
@@ -455,93 +530,24 @@ function renderTaskRow(task, monthData, d){
   cb.className = 'checkbox' + (task.done?' checked':'');
   cb.textContent = task.done ? '✓' : '';
   cb.onclick = ()=>{ task.done=!task.done; save(); refreshAll(); };
+  top.appendChild(cb);
 
-  const body = document.createElement('div');
-  body.className='task-body';
+  let tagChip = null;
+  if(task.tag){
+    tagChip = document.createElement('span');
+    tagChip.className='tag-chip';
+    tagChip.style.background = tagColor(task.tag);
+    tagChip.textContent = task.tag;
+    top.appendChild(tagChip);
+  }
 
-  const text = document.createElement('input');
-  text.className='task-title';
-  text.value = task.text || '';
-  text.placeholder='專案／任務名稱...';
-  text.oninput = ()=>{ task.text = text.value; save(); if(showAllTodo) renderAllTodos(); };
-  body.appendChild(text);
+  const title = document.createElement('input');
+  title.className='task-title';
+  title.value = task.text || '';
+  title.placeholder='專案／任務名稱...';
+  title.oninput = ()=>{ task.text = title.value; save(); if(showAllTodo) renderAllTodos(); };
+  top.appendChild(title);
 
-  const detail = document.createElement('textarea');
-  detail.className='task-detail';
-  detail.rows = 2;
-  detail.value = task.detail || '';
-  detail.placeholder='細節、備註...';
-  detail.oninput = ()=>{ task.detail = detail.value; save(); };
-  body.appendChild(detail);
-
-  // 提醒設定面板（預設收起來，點小鈴鐺才展開）
-  const panel = document.createElement('div');
-  panel.className = 'reminder-panel';
-
-  const lbl = document.createElement('span');
-  lbl.className='lbl'; lbl.textContent='🔔 提醒時間：';
-
-  const dt = document.createElement('input');
-  dt.type='datetime-local';
-  dt.value = task.eventAt || '';
-  dt.onchange = ()=>{
-    task.eventAt = dt.value;
-    task.reminderDone = false;
-    activePopupIds.delete(String(task.id));
-    save(); updateBell();
-  };
-
-  const leadLbl = document.createElement('span');
-  leadLbl.className='lbl'; leadLbl.textContent='提前';
-
-  const leadGroup = document.createElement('div');
-  leadGroup.className='lead-group';
-  const leadH = document.createElement('input');
-  leadH.type='number'; leadH.min='0'; leadH.value = task.leadH||0;
-  leadH.onchange = ()=>{ task.leadH = Number(leadH.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); };
-  const hSpan = document.createElement('span'); hSpan.textContent='小時';
-  const leadM = document.createElement('input');
-  leadM.type='number'; leadM.min='0'; leadM.max='59'; leadM.value = task.leadM||0;
-  leadM.onchange = ()=>{ task.leadM = Number(leadM.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); };
-  const mSpan = document.createElement('span'); mSpan.textContent='分鐘';
-  leadGroup.appendChild(leadH); leadGroup.appendChild(hSpan);
-  leadGroup.appendChild(leadM); leadGroup.appendChild(mSpan);
-
-  const panelBtnRow = document.createElement('div');
-  panelBtnRow.style.display='flex';
-  panelBtnRow.style.gap='12px';
-  panelBtnRow.style.alignItems='center';
-  panelBtnRow.style.width='100%';
-  panelBtnRow.style.marginTop='4px';
-
-  const confirmBtn = document.createElement('button');
-  confirmBtn.className='toggle-btn';
-  confirmBtn.style.margin='0';
-  confirmBtn.style.padding='5px 14px';
-  confirmBtn.style.fontSize='0.8em';
-  confirmBtn.textContent='✅ 完成設定';
-  confirmBtn.onclick = ()=>{ panel.classList.remove('show'); };
-
-  const removeBtn = document.createElement('button');
-  removeBtn.className='remove-reminder';
-  removeBtn.textContent='移除提醒';
-  removeBtn.onclick = ()=>{
-    task.eventAt=''; task.leadH=0; task.leadM=0; task.reminderDone=false;
-    activePopupIds.delete(String(task.id));
-    dt.value=''; leadH.value=0; leadM.value=0;
-    save(); updateBell();
-    panel.classList.remove('show');
-  };
-
-  panelBtnRow.appendChild(confirmBtn);
-  panelBtnRow.appendChild(removeBtn);
-
-  panel.appendChild(lbl); panel.appendChild(dt);
-  panel.appendChild(leadLbl); panel.appendChild(leadGroup);
-  panel.appendChild(panelBtnRow);
-  body.appendChild(panel);
-
-  // 小鈴鐺按鈕：平常收合，點了才展開設定面板
   const bellWrap = document.createElement('div');
   bellWrap.className='bell-wrap';
   const bellBtn = document.createElement('button');
@@ -557,23 +563,196 @@ function renderTaskRow(task, monthData, d){
       bellBtn.classList.remove('set');
       bellBadge.textContent = '';
     }
-    if(showAllTodo) renderAllTodos();
   }
-  bellBtn.onclick = ()=>{ panel.classList.toggle('show'); };
   updateBell();
   bellWrap.appendChild(bellBtn); bellWrap.appendChild(bellBadge);
+  top.appendChild(bellWrap);
+
+  const expandBtn = document.createElement('button');
+  expandBtn.className='expand-btn';
+  top.appendChild(expandBtn);
 
   const del = document.createElement('button');
   del.className='del-btn'; del.textContent='✕';
   del.onclick = ()=>{
-    const arr = monthData[d];
     arr.splice(arr.indexOf(task),1);
     save(); refreshAll();
   };
+  top.appendChild(del);
 
-  top.appendChild(cb); top.appendChild(body); top.appendChild(bellWrap); top.appendChild(del);
   row.appendChild(top);
+
+  // 展開區：標籤 / 細節 / 提醒設定
+  const expand = document.createElement('div');
+  expand.className = 'task-expand';
+
+  const tagRow = document.createElement('div');
+  tagRow.className = 'tag-row';
+  const tagLbl = document.createElement('span'); tagLbl.className='lbl'; tagLbl.textContent='🏷️ 標籤：';
+  const tagInput = document.createElement('input');
+  tagInput.value = task.tag || '';
+  tagInput.placeholder = '例如：案名／客戶名稱';
+  tagInput.onchange = ()=>{ task.tag = tagInput.value.trim(); save(); refreshAll(); };
+  tagRow.appendChild(tagLbl); tagRow.appendChild(tagInput);
+  expand.appendChild(tagRow);
+
+  const detail = document.createElement('textarea');
+  detail.className='task-detail';
+  detail.rows = 2;
+  detail.value = task.detail || '';
+  detail.placeholder='細節、備註...';
+  detail.oninput = ()=>{ task.detail = detail.value; save(); };
+  expand.appendChild(detail);
+
+  const remRow = document.createElement('div');
+  remRow.className='reminder-row';
+  const remLbl = document.createElement('span'); remLbl.className='lbl'; remLbl.textContent='🔔 提醒時間：';
+  const dt = document.createElement('input');
+  dt.type='datetime-local';
+  dt.value = task.eventAt || '';
+  dt.onchange = ()=>{
+    task.eventAt = dt.value;
+    task.reminderDone = false;
+    activePopupIds.delete(String(task.id));
+    save(); updateBell();
+  };
+  const leadLbl = document.createElement('span'); leadLbl.className='lbl'; leadLbl.textContent='提前';
+  const leadGroup = document.createElement('div');
+  leadGroup.className='lead-group';
+  const leadH = document.createElement('input');
+  leadH.type='number'; leadH.min='0'; leadH.value = task.leadH||0;
+  leadH.onchange = ()=>{ task.leadH = Number(leadH.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); };
+  const hSpan = document.createElement('span'); hSpan.textContent='小時';
+  const leadM = document.createElement('input');
+  leadM.type='number'; leadM.min='0'; leadM.max='59'; leadM.value = task.leadM||0;
+  leadM.onchange = ()=>{ task.leadM = Number(leadM.value)||0; task.reminderDone=false; activePopupIds.delete(String(task.id)); save(); updateBell(); };
+  const mSpan = document.createElement('span'); mSpan.textContent='分鐘';
+  leadGroup.appendChild(leadH); leadGroup.appendChild(hSpan);
+  leadGroup.appendChild(leadM); leadGroup.appendChild(mSpan);
+  const removeBtn = document.createElement('button');
+  removeBtn.className='remove-reminder';
+  removeBtn.textContent='移除提醒';
+  removeBtn.onclick = ()=>{
+    task.eventAt=''; task.leadH=0; task.leadM=0; task.reminderDone=false;
+    activePopupIds.delete(String(task.id));
+    dt.value=''; leadH.value=0; leadM.value=0;
+    save(); updateBell();
+  };
+  remRow.appendChild(remLbl); remRow.appendChild(dt);
+  remRow.appendChild(leadLbl); remRow.appendChild(leadGroup);
+  remRow.appendChild(removeBtn);
+  expand.appendChild(remRow);
+
+  const collapseLink = document.createElement('button');
+  collapseLink.className='collapse-link';
+  collapseLink.textContent='▲ 收合';
+  collapseLink.onclick = ()=> setExpanded(false);
+  expand.appendChild(collapseLink);
+
+  row.appendChild(expand);
+
+  function setExpanded(v){
+    if(v){ expandedTaskIds.add(String(task.id)); expandBtn.textContent='▾'; }
+    else { expandedTaskIds.delete(String(task.id)); expandBtn.textContent='▸'; }
+    expand.classList.toggle('show', v);
+  }
+  const initiallyOpen = expandedTaskIds.has(String(task.id));
+  expand.classList.toggle('show', initiallyOpen);
+  expandBtn.textContent = initiallyOpen ? '▾' : '▸';
+  expandBtn.onclick = ()=> setExpanded(!expandedTaskIds.has(String(task.id)));
+  bellBtn.onclick = ()=> setExpanded(!expandedTaskIds.has(String(task.id)));
+
   return row;
+}
+
+/* ---------- 月曆快速導覽 ---------- */
+function renderHeatStrip(){
+  const strip = document.getElementById('heatStrip');
+  strip.innerHTML = '';
+  const key = monthKey(curYear, curMonth);
+  const monthData = data[key] || {};
+  const dim = daysInMonth(curYear, curMonth);
+  const now = new Date();
+  const isCurMonth = now.getFullYear()===curYear && (now.getMonth()+1)===curMonth;
+  for(let d=1; d<=dim; d++){
+    const dot = document.createElement('div');
+    dot.className = 'heat-dot';
+    if(monthData[d] && monthData[d].length>0) dot.classList.add('has');
+    if(isCurMonth && d===now.getDate()) dot.classList.add('today');
+    dot.textContent = d;
+    dot.onclick = ()=>{
+      const target = document.getElementById(`day-${curYear}-${curMonth}-${d}`);
+      if(target){
+        target.scrollIntoView({behavior:'smooth', block:'center'});
+        target.classList.add('flash');
+        setTimeout(()=>target.classList.remove('flash'), 1200);
+      }
+    };
+    strip.appendChild(dot);
+  }
+}
+
+/* ---------- 依案件檢視 ---------- */
+function renderTagView(){
+  const view = document.getElementById('tagView');
+  view.innerHTML = '';
+  const groups = {};
+  Object.keys(data).sort().forEach(key=>{
+    const [y,m] = key.split('-').map(Number);
+    const monthData = data[key];
+    Object.keys(monthData).map(Number).sort((a,b)=>a-b).forEach(d=>{
+      monthData[d].forEach(task=>{
+        if(hideDone && task.done) return;
+        const g = task.tag || '未分類';
+        if(!groups[g]) groups[g]=[];
+        groups[g].push({y,m,d,task,arr:monthData[d]});
+      });
+    });
+  });
+  const tagNames = Object.keys(groups).sort((a,b)=>{
+    if(a==='未分類') return 1;
+    if(b==='未分類') return -1;
+    return a.localeCompare(b);
+  });
+  if(tagNames.length===0){
+    const none = document.createElement('div');
+    none.className='card';
+    none.innerHTML = '<div class="no-hit">目前沒有符合條件的項目</div>';
+    view.appendChild(none);
+    return;
+  }
+  tagNames.forEach(tag=>{
+    const wrap = document.createElement('div');
+    wrap.className='card tag-group';
+    const head = document.createElement('div');
+    head.className='tag-group-head';
+    head.style.background = tag==='未分類' ? '#b7c9c5' : tagColor(tag);
+    head.textContent = `${tag}（${groups[tag].length}）`;
+    wrap.appendChild(head);
+    groups[tag].forEach(item=>{
+      const el = document.createElement('div');
+      el.className='list-hit';
+      const cb = document.createElement('div');
+      cb.className='todo-check';
+      if(item.task.done){ cb.style.background='linear-gradient(135deg,var(--sea),var(--mint-dark))'; cb.textContent='✓'; cb.style.color='#fff'; cb.style.fontSize='11px'; cb.style.display='flex'; cb.style.alignItems='center'; cb.style.justifyContent='center'; }
+      cb.onclick = ()=>{ item.task.done=!item.task.done; save(); refreshAll(); };
+      const info = document.createElement('div');
+      info.className='info';
+      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.text||'（未命名項目）')}</span>`;
+      info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
+      el.appendChild(cb); el.appendChild(info);
+      wrap.appendChild(el);
+    });
+    view.appendChild(wrap);
+  });
+}
+
+function setActiveViewButtons(){
+  document.getElementById('monthView').style.display = viewMode==='date' ? 'block':'none';
+  document.getElementById('heatStrip').style.display = viewMode==='date' ? 'flex':'none';
+  document.getElementById('tagView').style.display = viewMode==='tag' ? 'block':'none';
+  document.getElementById('viewModeToggle').textContent = viewMode==='date' ? '🏷️ 依案件檢視' : '📅 依日期檢視';
+  document.getElementById('viewModeToggle').classList.toggle('active', viewMode==='tag');
 }
 
 function jumpTo(y,m,d){
@@ -581,6 +760,7 @@ function jumpTo(y,m,d){
   document.getElementById('yearInput').value=curYear;
   document.getElementById('monthInput').value=curMonth;
   renderMonth();
+  renderHeatStrip();
   setTimeout(()=>{
     const target = document.getElementById(`day-${y}-${m}-${d}`);
     if(target){
@@ -591,6 +771,7 @@ function jumpTo(y,m,d){
   }, 50);
 }
 
+/* ---------- 搜尋 ---------- */
 function runSearch(q){
   const resultsBox = document.getElementById('searchResults');
   resultsBox.innerHTML = '';
@@ -623,13 +804,13 @@ function runSearch(q){
     const info = document.createElement('div');
     info.className='info';
     info.innerHTML = `<span class="date-tag">${hit.y}/${hit.m}/${hit.d}</span><span class="snippet">${escapeHtml(hit.task.text)}</span>`;
-    info.onclick = ()=>jumpTo(hit.y,hit.m,hit.d);
+    info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(hit.y,hit.m,hit.d); };
     el.appendChild(info);
     resultsBox.appendChild(el);
   });
 }
 
-// 待辦提醒清單：只列出「有設定提醒時間」且尚未完成的項目
+/* ---------- 待辦提醒清單（只列有設提醒時間、未完成的） ---------- */
 function renderAllTodos(){
   const listBox = document.getElementById('allTodoList');
   listBox.innerHTML = '';
@@ -668,7 +849,7 @@ function renderAllTodos(){
     const leadText = (item.task.leadH||item.task.leadM) ? `（提前 ${item.task.leadH||0} 小時 ${item.task.leadM||0} 分鐘）` : '';
     const rmdHtml = `<span class="rmd-tag${isOverdue?' overdue':''}">🔔 ${item.task.eventAt.replace('T',' ')}${leadText}${isOverdue?'　⚠️ 已到提醒時間':''}</span>`;
     info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.text||'（未命名項目）')}</span>${rmdHtml}`;
-    info.onclick = ()=>jumpTo(item.y,item.m,item.d);
+    info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
 
     el.appendChild(cb);
     el.appendChild(info);
@@ -676,15 +857,26 @@ function renderAllTodos(){
   });
 }
 
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
+/* ---------- 控制按鈕 ---------- */
 document.getElementById('todoToggle').addEventListener('click', ()=>{
   showAllTodo = !showAllTodo;
   document.getElementById('allTodoCard').style.display = showAllTodo ? 'block' : 'none';
+  document.getElementById('todoToggle').classList.toggle('active', showAllTodo);
   document.getElementById('todoToggle').textContent = showAllTodo ? '📋 隱藏待辦提醒清單' : '📋 顯示待辦提醒清單';
   if(showAllTodo) renderAllTodos();
+});
+
+document.getElementById('viewModeToggle').addEventListener('click', ()=>{
+  viewMode = viewMode==='date' ? 'tag' : 'date';
+  setActiveViewButtons();
+  refreshAll();
+});
+
+document.getElementById('hideDoneToggle').addEventListener('click', ()=>{
+  hideDone = !hideDone;
+  document.getElementById('hideDoneToggle').classList.toggle('active', hideDone);
+  document.getElementById('hideDoneToggle').textContent = hideDone ? '👁️ 顯示全部' : '👁️ 只看未完成';
+  refreshAll();
 });
 
 document.getElementById('searchInput').addEventListener('input', e=>runSearch(e.target.value));
@@ -772,6 +964,7 @@ function showPopup(item){
 
 initControls();
 renderMonth();
+renderHeatStrip();
 initSync();
 setInterval(checkReminders, 15000);
 checkReminders();
