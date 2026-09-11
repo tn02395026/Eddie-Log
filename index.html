@@ -291,6 +291,9 @@
       <button class="toggle-btn" id="viewModeToggle">🏷️ 依案件檢視</button>
       <button class="toggle-btn" id="hideDoneToggle">👁️ 只看未完成</button>
       <button class="toggle-btn" id="tagManageToggle">🏷️ 管理標籤</button>
+      <button class="toggle-btn" id="exportBtn">📥 匯出備份</button>
+      <button class="toggle-btn" id="importBtn">📤 匯入備份</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
     </div>
 
     <div class="heat-strip" id="heatStrip"></div>
@@ -446,6 +449,24 @@ function pushToCloud(){
     .catch(e=>{ console.error(e); setSyncStatus('⚠️ 同步失敗，請確認 Firebase 設定'); });
 }
 
+function taskCount(dataObj){
+  let c = 0;
+  Object.values(dataObj||{}).forEach(monthData=>{
+    Object.values(monthData||{}).forEach(arr=>{ c += (arr||[]).length; });
+  });
+  return c;
+}
+
+// 決定「這次要用本機蓋雲端、還是用雲端蓋本機」
+// 規則：內容筆數明顯較少的一方，不可以蓋掉內容較多的一方；筆數差不多時才用時間戳記決定
+function decideSyncDirection(cloudObj, localUpdated, cloudUpdatedAt){
+  const localCount = taskCount(data);
+  const cloudCount = taskCount(cloudObj.data);
+  if(cloudCount > localCount) return 'pull';
+  if(localCount > cloudCount) return 'push';
+  return (cloudUpdatedAt||0) > localUpdated ? 'pull' : 'push';
+}
+
 function initSync(){
   if(!cloudEnabled){
     setSyncStatus('⚠️ 尚未完成 Firebase 設定，目前只會存在本機');
@@ -460,7 +481,9 @@ function initSync(){
     const localUpdated = Number(localStorage.getItem(UPDATED_KEY)||0);
     if(doc.exists){
       const cloud = doc.data();
-      if((cloud.updatedAt||0) > localUpdated){
+      const cloudObj = JSON.parse(cloud.json || '{}');
+      const direction = decideSyncDirection(cloudObj, localUpdated, cloud.updatedAt);
+      if(direction === 'pull'){
         applySyncPayload(cloud.json);
         localStorage.setItem(UPDATED_KEY, String(cloud.updatedAt||0));
         refreshAll();
@@ -474,8 +497,13 @@ function initSync(){
     db.collection('worklogs').doc(syncCode).onSnapshot(snap=>{
       if(!snap.exists) return;
       const cloud = snap.data();
+      const cloudObj = JSON.parse(cloud.json || '{}');
       const localUpdated2 = Number(localStorage.getItem(UPDATED_KEY)||0);
-      if((cloud.updatedAt||0) > localUpdated2 + 1000){
+      const cloudCount = taskCount(cloudObj.data);
+      const localCount = taskCount(data);
+      const looksNewer = (cloud.updatedAt||0) > localUpdated2 + 1000;
+      const notThinner = cloudCount >= localCount; // 雲端內容沒有明顯變少，才允許拉下來蓋本機
+      if(looksNewer && notThinner){
         applySyncPayload(cloud.json);
         localStorage.setItem(UPDATED_KEY, String(cloud.updatedAt||0));
         refreshAll();
@@ -1127,6 +1155,73 @@ function showPopup(item){
   };
   stack.appendChild(pop);
 }
+
+/* ---------- 匯出／匯入備份 ---------- */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const payload = JSON.stringify({ data, tagList, tagColors }, null, 2);
+  const blob = new Blob([payload], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  a.href = url;
+  a.download = `worklog-backup-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const obj = JSON.parse(reader.result);
+      const incomingCount = taskCount(obj.data);
+      const currentCount = taskCount(data);
+      const ok = confirm(`這份備份檔裡有 ${incomingCount} 筆項目，目前畫面上有 ${currentCount} 筆。\n匯入後會整個取代目前的資料，確定要匯入嗎？`);
+      if(!ok) return;
+      data = obj.data || {};
+      tagList = obj.tagList || [];
+      tagColors = obj.tagColors || {};
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+      localStorage.setItem(TAGS_KEY, JSON.stringify(tagList));
+      localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors));
+      schedulePush();
+      refreshAll();
+      alert('匯入完成！');
+    }catch(err){
+      console.error(err);
+      alert('這個檔案讀不懂，請確認是不是之前用「匯出備份」下載的檔案');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ---------- 一次性資料修復：補回 2026/9/10 被同步問題蓋掉的紀錄 ---------- */
+(function restoreSept10(){
+  const FLAG = 'worklog_restore_20260910_done';
+  if(localStorage.getItem(FLAG)) return;
+  const key = '2026-09';
+  ensureMonth(key);
+  if(!data[key]['10'] || data[key]['10'].length === 0){
+    data[key]['10'] = [
+      {id:Date.now()+1, text:'泰和茂和美集合住宅', detail:'今日詢問百邑無障礙報價', tag:'', done:false, eventAt:'2026-09-14T10:30', leadH:0, leadM:0, reminderDone:false},
+      {id:Date.now()+2, text:'同興自動倉儲廠房規劃設計案', detail:'張先生說明建築師說明現在還沒辦法確認需要完成的時間點，他會再持續追蹤', tag:'', done:false, eventAt:'2026-09-16T10:54', leadH:0, leadM:0, reminderDone:false},
+      {id:Date.now()+3, text:'台北大安瑞安段', detail:'今日再催促百邑報價作業', tag:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false},
+      {id:Date.now()+4, text:'LEXUS高都高雄建國營業所', detail:'今日已收到CxA回簽報價單', tag:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false},
+      {id:Date.now()+5, text:'國泰何厝-國泰置地廣場(台中)', detail:'JL說明要報CxA價格', tag:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false},
+      {id:Date.now()+6, text:'得力興台中豐原新建廠辦', detail:'今日再催促空調節能計算書報價單，林小姐外出，已請接聽者留言', tag:'報價', done:false, eventAt:'2026-09-14T15:21', leadH:0, leadM:0, reminderDone:false}
+    ];
+    save();
+  }
+  localStorage.setItem(FLAG, '1');
+})();
 
 initControls();
 renderMonth();
