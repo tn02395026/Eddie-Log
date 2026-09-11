@@ -339,13 +339,14 @@ const activePopupIds = new Set();
 const expandedTaskIds = new Set();
 let overdueUpdaters = [];
 const weekdays = ['日','一','二','三','四','五','六'];
-const TAG_COLORS = ['#3fb6c9','#4fae82','#e0a951','#ba68c8','#ec6f8e','#7986cb','#8d6e63','#4db6ac'];
+const TAG_COLORS = ['#3fb6c9','#4fae82','#e0a951','#ba68c8','#ec6f8e','#7986cb','#8d6e63','#4db6ac',
+  '#f4a261','#2a9d8f','#e76f51','#577590','#9c89b8','#43aa8b','#f9844a','#277da1'];
 const TAGS_KEY = 'worklog_tags';
 let tagList = JSON.parse(localStorage.getItem(TAGS_KEY) || '[]');
-function saveTags(){ localStorage.setItem(TAGS_KEY, JSON.stringify(tagList)); }
+function saveTags(){ localStorage.setItem(TAGS_KEY, JSON.stringify(tagList)); schedulePush(); }
 const TAG_COLOR_KEY = 'worklog_tag_colors';
 let tagColors = JSON.parse(localStorage.getItem(TAG_COLOR_KEY) || '{}');
-function saveTagColors(){ localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors)); }
+function saveTagColors(){ localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors)); schedulePush(); }
 function getAllTags(){
   const set = new Set(tagList);
   Object.values(data).forEach(monthData=>{
@@ -423,11 +424,24 @@ function setSyncStatus(msg){
   if(el) el.textContent = msg;
 }
 
+function buildSyncPayload(){
+  return JSON.stringify({ data, tagList, tagColors });
+}
+function applySyncPayload(jsonStr){
+  const obj = JSON.parse(jsonStr || '{}');
+  data = obj.data || {};
+  tagList = obj.tagList || [];
+  tagColors = obj.tagColors || {};
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+  localStorage.setItem(TAGS_KEY, JSON.stringify(tagList));
+  localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors));
+}
+
 function pushToCloud(){
   if(!cloudEnabled || !syncCode) return;
   const updatedAt = Date.now();
   localStorage.setItem(UPDATED_KEY, String(updatedAt));
-  db.collection('worklogs').doc(syncCode).set({ json: JSON.stringify(data), updatedAt })
+  db.collection('worklogs').doc(syncCode).set({ json: buildSyncPayload(), updatedAt })
     .then(()=> setSyncStatus('☁️ 已同步'))
     .catch(e=>{ console.error(e); setSyncStatus('⚠️ 同步失敗，請確認 Firebase 設定'); });
 }
@@ -447,8 +461,7 @@ function initSync(){
     if(doc.exists){
       const cloud = doc.data();
       if((cloud.updatedAt||0) > localUpdated){
-        data = JSON.parse(cloud.json || '{}');
-        localStorage.setItem(LS_KEY, JSON.stringify(data));
+        applySyncPayload(cloud.json);
         localStorage.setItem(UPDATED_KEY, String(cloud.updatedAt||0));
         refreshAll();
       } else {
@@ -463,8 +476,7 @@ function initSync(){
       const cloud = snap.data();
       const localUpdated2 = Number(localStorage.getItem(UPDATED_KEY)||0);
       if((cloud.updatedAt||0) > localUpdated2 + 1000){
-        data = JSON.parse(cloud.json || '{}');
-        localStorage.setItem(LS_KEY, JSON.stringify(data));
+        applySyncPayload(cloud.json);
         localStorage.setItem(UPDATED_KEY, String(cloud.updatedAt||0));
         refreshAll();
         setSyncStatus('☁️ 已從其他裝置同步最新資料');
@@ -476,13 +488,17 @@ function initSync(){
   });
 }
 
-function save(){
-  localStorage.setItem(LS_KEY, JSON.stringify(data));
+function schedulePush(){
   localStorage.setItem(UPDATED_KEY, String(Date.now()));
   if(cloudEnabled && syncCode){
     clearTimeout(pushTimer);
     pushTimer = setTimeout(pushToCloud, 800);
   }
+}
+
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+  schedulePush();
 }
 
 function monthKey(y,m){ return `${y}-${String(m).padStart(2,'0')}`; }
@@ -502,8 +518,17 @@ function triggerAt(task){
 function tagColor(tag){
   if(!tag) return '#b7c9c5';
   if(tagColors[tag]) return tagColors[tag];
-  let h=0; for(let i=0;i<tag.length;i++) h = (h*31 + tag.charCodeAt(i)) >>> 0;
-  return TAG_COLORS[h % TAG_COLORS.length];
+  // 新標籤：從色盤裡挑一個「還沒有人用過」的顏色，並記住這個配對，避免撞色
+  const used = new Set(Object.values(tagColors));
+  let chosen = TAG_COLORS.find(c=>!used.has(c));
+  if(!chosen){
+    // 顏色已經用完（標籤數超過色盤數量），才退回用文字算色，可能會重複
+    let h=0; for(let i=0;i<tag.length;i++) h = (h*31 + tag.charCodeAt(i)) >>> 0;
+    chosen = TAG_COLORS[h % TAG_COLORS.length];
+  }
+  tagColors[tag] = chosen;
+  saveTagColors();
+  return chosen;
 }
 function escapeHtml(s){
   return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
