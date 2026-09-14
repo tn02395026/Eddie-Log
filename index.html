@@ -910,33 +910,71 @@ function renderHeatStrip(){
 /* ---------- 依案件檢視 ---------- */
 function renderTagView(){
   const view = document.getElementById('tagView');
-  view.innerHTML = '';
 
-  // 搜尋／篩選列（每次重繪都會重建，狀態存在外部變數裡）
-  const controlCard = document.createElement('div');
-  controlCard.className = 'card';
-  const searchRow = document.createElement('div');
-  searchRow.className = 'search-row';
-  searchRow.innerHTML = `<span>🔍</span>`;
-  const caseSearchInput = document.createElement('input');
-  caseSearchInput.type = 'text';
-  caseSearchInput.placeholder = '輸入案名關鍵字搜尋（含已結案的案子）...';
-  caseSearchInput.value = caseSearchQuery;
-  caseSearchInput.oninput = ()=>{ caseSearchQuery = caseSearchInput.value; renderTagView(); };
-  searchRow.appendChild(caseSearchInput);
-  controlCard.appendChild(searchRow);
+  // 控制列（搜尋框、切換按鈕）只建立一次，之後不再整個重建，避免打字/注音輸入被打斷
+  let controlCard = document.getElementById('tagControlsCard');
+  if(!controlCard){
+    view.innerHTML = '';
+    controlCard = document.createElement('div');
+    controlCard.className = 'card';
+    controlCard.id = 'tagControlsCard';
 
-  const toggleRow = document.createElement('div');
-  toggleRow.style.textAlign = 'center';
-  toggleRow.style.marginTop = '10px';
-  const closedToggleBtn = document.createElement('button');
-  closedToggleBtn.className = 'toggle-btn' + (showClosedCases ? ' active' : '');
-  closedToggleBtn.style.fontSize = '0.8em';
-  closedToggleBtn.textContent = showClosedCases ? '👁️ 只看進行中案件' : '📁 顯示已結案案件';
-  closedToggleBtn.onclick = ()=>{ showClosedCases = !showClosedCases; renderTagView(); };
-  toggleRow.appendChild(closedToggleBtn);
-  controlCard.appendChild(toggleRow);
-  view.appendChild(controlCard);
+    const searchRow = document.createElement('div');
+    searchRow.className = 'search-row';
+    searchRow.innerHTML = `<span>🔍</span>`;
+    const caseSearchInput = document.createElement('input');
+    caseSearchInput.type = 'text';
+    caseSearchInput.id = 'caseSearchInput';
+    caseSearchInput.placeholder = '輸入案名關鍵字搜尋（含已結案的案子）...';
+    caseSearchInput.value = caseSearchQuery;
+    caseSearchInput.oninput = ()=>{
+      caseSearchQuery = caseSearchInput.value;
+      renderTagGroups();
+    };
+    searchRow.appendChild(caseSearchInput);
+    controlCard.appendChild(searchRow);
+
+    const toggleRow = document.createElement('div');
+    toggleRow.style.textAlign = 'center';
+    toggleRow.style.marginTop = '10px';
+    const closedToggleBtn = document.createElement('button');
+    closedToggleBtn.id = 'closedToggleBtn';
+    closedToggleBtn.className = 'toggle-btn';
+    closedToggleBtn.style.fontSize = '0.8em';
+    closedToggleBtn.onclick = ()=>{
+      showClosedCases = !showClosedCases;
+      renderTagGroups();
+    };
+    toggleRow.appendChild(closedToggleBtn);
+    controlCard.appendChild(toggleRow);
+    view.appendChild(controlCard);
+
+    const summary = document.createElement('div');
+    summary.id = 'tagSummary';
+    summary.style.textAlign='center';
+    summary.style.fontSize='0.78em';
+    summary.style.color='var(--text-light)';
+    summary.style.marginBottom='12px';
+    view.appendChild(summary);
+
+    const resultsBox = document.createElement('div');
+    resultsBox.id = 'tagResults';
+    view.appendChild(resultsBox);
+  } else {
+    // 控制列已存在：只同步顯示狀態（不動到輸入框本身，除非是外部指定搜尋字）
+    const input = document.getElementById('caseSearchInput');
+    if(input && document.activeElement !== input) input.value = caseSearchQuery;
+  }
+
+  renderTagGroups();
+}
+
+function renderTagGroups(){
+  const closedToggleBtn = document.getElementById('closedToggleBtn');
+  if(closedToggleBtn){
+    closedToggleBtn.classList.toggle('active', showClosedCases);
+    closedToggleBtn.textContent = showClosedCases ? '👁️ 只看進行中案件' : '📁 顯示已結案案件';
+  }
 
   const groups = {};
   let closedCount = 0;
@@ -966,21 +1004,21 @@ function renderTagView(){
     return showClosedCases ? true : !closed;
   });
 
-  const summary = document.createElement('div');
-  summary.style.textAlign='center';
-  summary.style.fontSize='0.78em';
-  summary.style.color='var(--text-light)';
-  summary.style.marginBottom='12px';
-  summary.textContent = q
-    ? `搜尋到 ${caseNames.length} 個符合的案件`
-    : (showClosedCases ? `顯示全部 ${caseNames.length} 個案件` : `${caseNames.length} 個進行中案件（另有 ${closedCount} 個已結案未顯示，可搜尋或點上方按鈕查看）`);
-  view.appendChild(summary);
+  const summary = document.getElementById('tagSummary');
+  if(summary){
+    summary.textContent = q
+      ? `搜尋到 ${caseNames.length} 個符合的案件`
+      : (showClosedCases ? `顯示全部 ${caseNames.length} 個案件` : `${caseNames.length} 個進行中案件（另有 ${closedCount} 個已結案未顯示，可搜尋或點上方按鈕查看）`);
+  }
+
+  const resultsBox = document.getElementById('tagResults');
+  resultsBox.innerHTML = '';
 
   if(caseNames.length===0){
     const none = document.createElement('div');
     none.className='card';
     none.innerHTML = '<div class="no-hit">沒有符合條件的案件</div>';
-    view.appendChild(none);
+    resultsBox.appendChild(none);
     return;
   }
   caseNames.forEach(caseName=>{
@@ -1040,7 +1078,7 @@ function renderTagView(){
       listWrap.appendChild(el);
     });
     wrap.appendChild(listWrap);
-    view.appendChild(wrap);
+    resultsBox.appendChild(wrap);
   });
 }
 
@@ -1095,6 +1133,36 @@ function runSearch(q){
     resultsBox.appendChild(none);
     return;
   }
+
+  // 從符合的結果裡，找出「案名」有出現的，做成快速跳轉整案彙整的按鈕
+  const caseNames = new Set();
+  hits.forEach(hit=>{
+    const t = (hit.task.text||'').trim();
+    if(t) caseNames.add(t);
+  });
+  if(caseNames.size > 0){
+    const caseRow = document.createElement('div');
+    caseRow.style.display='flex';
+    caseRow.style.flexWrap='wrap';
+    caseRow.style.gap='8px';
+    caseRow.style.marginBottom='10px';
+    caseNames.forEach(caseName=>{
+      const chip = document.createElement('button');
+      chip.className='toggle-btn';
+      chip.style.fontSize='0.78em';
+      chip.style.padding='6px 12px';
+      chip.textContent = `📁 查看「${caseName}」整案彙整`;
+      chip.onclick = ()=>{
+        caseSearchQuery = caseName;
+        viewMode = 'tag';
+        setActiveViewButtons();
+        refreshAll();
+      };
+      caseRow.appendChild(chip);
+    });
+    resultsBox.appendChild(caseRow);
+  }
+
   hits.forEach(hit=>{
     const el = document.createElement('div');
     el.className='list-hit';
