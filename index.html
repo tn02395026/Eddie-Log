@@ -81,6 +81,11 @@
   .list-hit .info{flex:1;min-width:0;cursor:pointer;}
   .list-hit .date-tag{font-weight:700;color:var(--sea-dark);white-space:nowrap;margin-right:8px;}
   .list-hit .snippet{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .list-hit.multiline{align-items:flex-start;}
+  .list-hit .snippet-wrap{
+    display:block;white-space:normal;overflow-wrap:break-word;word-break:break-word;
+    line-height:1.5;
+  }
   .list-hit .rmd-tag{font-size:0.78em;color:var(--text-light);display:block;margin-top:2px;}
   .list-hit .rmd-tag.overdue{color:var(--coral);font-weight:700;}
   .no-hit{text-align:center;color:var(--text-light);font-size:0.85em;padding:8px;}
@@ -1017,18 +1022,19 @@ function renderTagView(){
     listWrap.style.marginTop='8px';
     groups[caseName].forEach(item=>{
       const el = document.createElement('div');
-      el.className='list-hit';
+      el.className='list-hit multiline';
       const cb = document.createElement('div');
       cb.className='todo-check';
+      cb.style.marginTop='2px';
       if(item.task.done){ cb.style.background='linear-gradient(135deg,var(--sea),var(--mint-dark))'; cb.textContent='✓'; cb.style.color='#fff'; cb.style.fontSize='11px'; cb.style.display='flex'; cb.style.alignItems='center'; cb.style.justifyContent='center'; }
       cb.onclick = ()=>{ item.task.done=!item.task.done; save(); refreshAll(); };
       const info = document.createElement('div');
       info.className='info';
       let tagChipHtml = '';
       if(item.task.tag){
-        tagChipHtml = `<span class="tag-chip" style="background:${tagColor(item.task.tag)};margin-left:8px;">${escapeHtml(item.task.tag)}</span>`;
+        tagChipHtml = `<span class="tag-chip" style="background:${tagColor(item.task.tag)};margin-top:6px;display:inline-block;">${escapeHtml(item.task.tag)}</span>`;
       }
-      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.detail || '（無細節）')}</span>${tagChipHtml}`;
+      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet-wrap">${escapeHtml(item.task.detail || '（無細節）')}</span>${tagChipHtml}`;
       info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
       el.appendChild(cb); el.appendChild(info);
       listWrap.appendChild(el);
