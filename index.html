@@ -987,6 +987,24 @@ function runSearch(q){
 }
 
 /* ---------- 待辦提醒清單（只列有設提醒時間、未完成的） ---------- */
+function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+function todoBucket(task, now){
+  const trig = triggerAt(task);
+  if(trig && trig <= now && !task.reminderDone) return 'overdue';
+  const eventDate = (task.eventAt||'').split('T')[0];
+  const todayYMD = ymd(now);
+  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowYMD = ymd(tomorrow);
+  const weekLimit = new Date(now); weekLimit.setDate(weekLimit.getDate()+7);
+  const weekLimitYMD = ymd(weekLimit);
+  if(eventDate < todayYMD) return 'overdue';
+  if(eventDate === todayYMD) return 'today';
+  if(eventDate === tomorrowYMD) return 'tomorrow';
+  if(eventDate <= weekLimitYMD) return 'week';
+  return 'later';
+}
+
 function renderAllTodos(){
   const listBox = document.getElementById('allTodoList');
   listBox.innerHTML = '';
@@ -1000,7 +1018,6 @@ function renderAllTodos(){
       });
     });
   });
-  items.sort((a,b)=> new Date(a.task.eventAt) - new Date(b.task.eventAt));
   document.getElementById('allTodoTitle').textContent = `📋 待辦提醒清單（${items.length}）`;
   if(items.length===0){
     const none = document.createElement('div');
@@ -1010,26 +1027,56 @@ function renderAllTodos(){
     return;
   }
   const now = new Date();
-  items.forEach(item=>{
-    const el = document.createElement('div');
-    el.className='list-hit';
+  const buckets = { overdue:[], today:[], tomorrow:[], week:[], later:[] };
+  items.forEach(item=> buckets[todoBucket(item.task, now)].push(item));
+  Object.values(buckets).forEach(arr=> arr.sort((a,b)=> new Date(a.task.eventAt) - new Date(b.task.eventAt)));
 
-    const cb = document.createElement('div');
-    cb.className='todo-check';
-    cb.onclick = ()=>{ item.task.done=true; save(); refreshAll(); };
+  const groupDefs = [
+    {key:'overdue', label:'⚠️ 已逾期', color:'var(--coral)'},
+    {key:'today', label:'📅 今天', color:'var(--sea-dark)'},
+    {key:'tomorrow', label:'🌅 明天', color:'var(--mint-dark)'},
+    {key:'week', label:'🗓️ 本週內', color:'#e0a951'},
+    {key:'later', label:'📆 之後', color:'#7986cb'}
+  ];
 
-    const info = document.createElement('div');
-    info.className='info';
-    const trig = triggerAt(item.task);
-    const isOverdue = trig && trig <= now;
-    const leadText = (item.task.leadH||item.task.leadM) ? `（提前 ${item.task.leadH||0} 小時 ${item.task.leadM||0} 分鐘）` : '';
-    const rmdHtml = `<span class="rmd-tag${isOverdue?' overdue':''}">🔔 ${item.task.eventAt.replace('T',' ')}${leadText}${isOverdue?'　⚠️ 已到提醒時間':''}</span>`;
-    info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.text||'（未命名項目）')}</span>${rmdHtml}`;
-    info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
+  groupDefs.forEach(grp=>{
+    const arr = buckets[grp.key];
+    if(arr.length===0) return;
 
-    el.appendChild(cb);
-    el.appendChild(info);
-    listBox.appendChild(el);
+    const head = document.createElement('div');
+    head.style.display='inline-block';
+    head.style.fontSize='0.82em';
+    head.style.fontWeight='700';
+    head.style.color='#fff';
+    head.style.padding='4px 12px';
+    head.style.borderRadius='999px';
+    head.style.marginTop='12px';
+    head.style.marginBottom='8px';
+    head.style.background=grp.color;
+    head.textContent = `${grp.label}（${arr.length}）`;
+    listBox.appendChild(head);
+
+    arr.forEach(item=>{
+      const el = document.createElement('div');
+      el.className='list-hit';
+
+      const cb = document.createElement('div');
+      cb.className='todo-check';
+      cb.onclick = ()=>{ item.task.done=true; save(); refreshAll(); };
+
+      const info = document.createElement('div');
+      info.className='info';
+      const trig = triggerAt(item.task);
+      const isOverdue = trig && trig <= now;
+      const leadText = (item.task.leadH||item.task.leadM) ? `（提前 ${item.task.leadH||0} 小時 ${item.task.leadM||0} 分鐘）` : '';
+      const rmdHtml = `<span class="rmd-tag${isOverdue?' overdue':''}">🔔 ${item.task.eventAt.replace('T',' ')}${leadText}${isOverdue?'　⚠️ 已到提醒時間':''}</span>`;
+      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.text||'（未命名項目）')}</span>${rmdHtml}`;
+      info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
+
+      el.appendChild(cb);
+      el.appendChild(info);
+      listBox.appendChild(el);
+    });
   });
 }
 
