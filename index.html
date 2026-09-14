@@ -350,6 +350,10 @@ function saveTags(){ localStorage.setItem(TAGS_KEY, JSON.stringify(tagList)); sc
 const TAG_COLOR_KEY = 'worklog_tag_colors';
 let tagColors = JSON.parse(localStorage.getItem(TAG_COLOR_KEY) || '{}');
 function saveTagColors(){ localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors)); schedulePush(); }
+const TAG_STATUS_KEY = 'worklog_tag_status';
+let tagStatus = JSON.parse(localStorage.getItem(TAG_STATUS_KEY) || '{}'); // true = 已結案
+function saveTagStatus(){ localStorage.setItem(TAG_STATUS_KEY, JSON.stringify(tagStatus)); schedulePush(); }
+function isTagClosed(tag){ return !!tagStatus[tag]; }
 function getAllTags(){
   const set = new Set(tagList);
   Object.values(data).forEach(monthData=>{
@@ -428,16 +432,18 @@ function setSyncStatus(msg){
 }
 
 function buildSyncPayload(){
-  return JSON.stringify({ data, tagList, tagColors });
+  return JSON.stringify({ data, tagList, tagColors, tagStatus });
 }
 function applySyncPayload(jsonStr){
   const obj = JSON.parse(jsonStr || '{}');
   data = obj.data || {};
   tagList = obj.tagList || [];
   tagColors = obj.tagColors || {};
+  tagStatus = obj.tagStatus || {};
   localStorage.setItem(LS_KEY, JSON.stringify(data));
   localStorage.setItem(TAGS_KEY, JSON.stringify(tagList));
   localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors));
+  localStorage.setItem(TAG_STATUS_KEY, JSON.stringify(tagStatus));
 }
 
 function pushToCloud(){
@@ -675,7 +681,8 @@ function renderTaskRow(task, arr){
     tagChip = document.createElement('span');
     tagChip.className='tag-chip';
     tagChip.style.background = tagColor(task.tag);
-    tagChip.textContent = task.tag;
+    tagChip.textContent = task.tag + (isTagClosed(task.tag) ? ' ✅' : '');
+    if(isTagClosed(task.tag)) tagChip.style.opacity='0.6';
     top.appendChild(tagChip);
   }
 
@@ -692,7 +699,7 @@ function renderTaskRow(task, arr){
   top.appendChild(overdueBadge);
 
   function applyOverdueState(){
-    const isOD = !!(task.eventAt && !task.done && triggerAt(task) && triggerAt(task) <= new Date());
+    const isOD = !!(task.eventAt && !task.done && !isTagClosed(task.tag) && triggerAt(task) && triggerAt(task) <= new Date());
     row.classList.toggle('overdue', isOD);
     overdueBadge.style.display = isOD ? 'inline-flex' : 'none';
   }
@@ -898,13 +905,42 @@ function renderTagView(){
     return;
   }
   tagNames.forEach(tag=>{
+    const closed = tag!=='未分類' && isTagClosed(tag);
     const wrap = document.createElement('div');
     wrap.className='card tag-group';
+    if(closed) wrap.style.opacity='0.6';
+
+    const headRow = document.createElement('div');
+    headRow.style.display='flex';
+    headRow.style.alignItems='center';
+    headRow.style.justifyContent='space-between';
+    headRow.style.flexWrap='wrap';
+    headRow.style.gap='8px';
+
     const head = document.createElement('div');
     head.className='tag-group-head';
+    head.style.marginBottom='0';
     head.style.background = tag==='未分類' ? '#b7c9c5' : tagColor(tag);
-    head.textContent = `${tag}（${groups[tag].length}）`;
-    wrap.appendChild(head);
+    head.textContent = `${tag}（${groups[tag].length}）${closed?'　✅ 已結案':''}`;
+    headRow.appendChild(head);
+
+    if(tag!=='未分類'){
+      const statusBtn = document.createElement('button');
+      statusBtn.className='toggle-btn';
+      statusBtn.style.padding='4px 12px';
+      statusBtn.style.fontSize='0.78em';
+      statusBtn.textContent = closed ? '↩️ 重新開啟' : '✅ 整案結案';
+      statusBtn.onclick = ()=>{
+        tagStatus[tag] = !closed;
+        saveTagStatus();
+        refreshAll();
+      };
+      headRow.appendChild(statusBtn);
+    }
+
+    wrap.appendChild(headRow);
+    const listWrap = document.createElement('div');
+    listWrap.style.marginTop='8px';
     groups[tag].forEach(item=>{
       const el = document.createElement('div');
       el.className='list-hit';
@@ -917,8 +953,9 @@ function renderTagView(){
       info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.text||'（未命名項目）')}</span>`;
       info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
       el.appendChild(cb); el.appendChild(info);
-      wrap.appendChild(el);
+      listWrap.appendChild(el);
     });
+    wrap.appendChild(listWrap);
     view.appendChild(wrap);
   });
 }
@@ -1014,7 +1051,7 @@ function renderAllTodos(){
     const monthData = data[key];
     Object.keys(monthData).map(Number).sort((a,b)=>a-b).forEach(d=>{
       monthData[d].forEach(task=>{
-        if(!task.done && task.eventAt) items.push({y,m,d,task});
+        if(!task.done && task.eventAt && !isTagClosed(task.tag)) items.push({y,m,d,task});
       });
     });
   });
@@ -1145,7 +1182,7 @@ function checkReminders(){
   const now = new Date();
   findAllTasksFlat().forEach(item=>{
     const t = item.task;
-    if(!t.eventAt || t.reminderDone || t.done) return;
+    if(!t.eventAt || t.reminderDone || t.done || isTagClosed(t.tag)) return;
     if(activePopupIds.has(String(t.id))) return;
     const trig = triggerAt(t);
     if(trig && trig <= now){
@@ -1205,7 +1242,7 @@ function showPopup(item){
 
 /* ---------- 匯出／匯入備份 ---------- */
 document.getElementById('exportBtn').addEventListener('click', ()=>{
-  const payload = JSON.stringify({ data, tagList, tagColors }, null, 2);
+  const payload = JSON.stringify({ data, tagList, tagColors, tagStatus }, null, 2);
   const blob = new Blob([payload], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1235,9 +1272,11 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
       data = obj.data || {};
       tagList = obj.tagList || [];
       tagColors = obj.tagColors || {};
+      tagStatus = obj.tagStatus || {};
       localStorage.setItem(LS_KEY, JSON.stringify(data));
       localStorage.setItem(TAGS_KEY, JSON.stringify(tagList));
       localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors));
+      localStorage.setItem(TAG_STATUS_KEY, JSON.stringify(tagStatus));
       schedulePush();
       refreshAll();
       alert('匯入完成！');
