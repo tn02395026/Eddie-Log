@@ -310,7 +310,7 @@
     <div style="text-align:center;font-weight:700;color:var(--sea-dark);margin-bottom:8px;">🏷️ 標籤管理</div>
     <div class="search-row" style="margin-bottom:12px;">
       <span>＋</span>
-      <input type="text" id="newTagInput" placeholder="輸入新的標籤名稱，例如案名／客戶名稱">
+      <input type="text" id="newTagInput" placeholder="輸入新標籤，例如：報價、合約、會議準備">
       <button class="toggle-btn" id="addTagBtn" style="padding:6px 12px;">新增</button>
     </div>
     <div id="tagChipList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
@@ -338,6 +338,8 @@ let curYear, curMonth;
 let showAllTodo = false;
 let viewMode = 'date'; // 'date' | 'tag'
 let hideDone = false;
+let caseSearchQuery = '';
+let showClosedCases = false;
 const activePopupIds = new Set();
 const expandedTaskIds = new Set();
 let overdueUpdaters = [];
@@ -351,9 +353,22 @@ const TAG_COLOR_KEY = 'worklog_tag_colors';
 let tagColors = JSON.parse(localStorage.getItem(TAG_COLOR_KEY) || '{}');
 function saveTagColors(){ localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors)); schedulePush(); }
 const TAG_STATUS_KEY = 'worklog_tag_status';
-let tagStatus = JSON.parse(localStorage.getItem(TAG_STATUS_KEY) || '{}'); // true = 已結案
+let tagStatus = JSON.parse(localStorage.getItem(TAG_STATUS_KEY) || '{}'); // 保留欄位，目前未使用於結案判斷
 function saveTagStatus(){ localStorage.setItem(TAG_STATUS_KEY, JSON.stringify(tagStatus)); schedulePush(); }
 function isTagClosed(tag){ return !!tagStatus[tag]; }
+// 案子結案：改用「案名文字完全相同」判斷，跟標籤脫鉤
+const CASE_STATUS_KEY = 'worklog_case_status';
+let caseStatus = JSON.parse(localStorage.getItem(CASE_STATUS_KEY) || '{}'); // true = 已結案
+function saveCaseStatus(){ localStorage.setItem(CASE_STATUS_KEY, JSON.stringify(caseStatus)); schedulePush(); }
+function isCaseClosed(title){
+  const t = (title||'').trim();
+  if(!t) return false;
+  return !!caseStatus[t];
+}
+function caseColor(name){
+  let h=0; for(let i=0;i<name.length;i++) h = (h*31 + name.charCodeAt(i)) >>> 0;
+  return TAG_COLORS[h % TAG_COLORS.length];
+}
 function getAllTags(){
   const set = new Set(tagList);
   Object.values(data).forEach(monthData=>{
@@ -432,7 +447,7 @@ function setSyncStatus(msg){
 }
 
 function buildSyncPayload(){
-  return JSON.stringify({ data, tagList, tagColors, tagStatus });
+  return JSON.stringify({ data, tagList, tagColors, tagStatus, caseStatus });
 }
 function applySyncPayload(jsonStr){
   const obj = JSON.parse(jsonStr || '{}');
@@ -440,10 +455,12 @@ function applySyncPayload(jsonStr){
   tagList = obj.tagList || [];
   tagColors = obj.tagColors || {};
   tagStatus = obj.tagStatus || {};
+  caseStatus = obj.caseStatus || {};
   localStorage.setItem(LS_KEY, JSON.stringify(data));
   localStorage.setItem(TAGS_KEY, JSON.stringify(tagList));
   localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors));
   localStorage.setItem(TAG_STATUS_KEY, JSON.stringify(tagStatus));
+  localStorage.setItem(CASE_STATUS_KEY, JSON.stringify(caseStatus));
 }
 
 function pushToCloud(){
@@ -681,8 +698,7 @@ function renderTaskRow(task, arr){
     tagChip = document.createElement('span');
     tagChip.className='tag-chip';
     tagChip.style.background = tagColor(task.tag);
-    tagChip.textContent = task.tag + (isTagClosed(task.tag) ? ' ✅' : '');
-    if(isTagClosed(task.tag)) tagChip.style.opacity='0.6';
+    tagChip.textContent = task.tag;
     top.appendChild(tagChip);
   }
 
@@ -690,8 +706,19 @@ function renderTaskRow(task, arr){
   title.className='task-title';
   title.value = task.text || '';
   title.placeholder='專案／任務名稱...';
-  title.oninput = ()=>{ task.text = title.value; save(); if(showAllTodo) renderAllTodos(); };
+
+  const caseBadge = document.createElement('span');
+  caseBadge.className='overdue-badge';
+  caseBadge.style.background = 'var(--mint-dark)';
+  caseBadge.style.animation = 'none';
+  caseBadge.textContent = '✅ 已結案';
+  function updateCaseBadge(){
+    caseBadge.style.display = isCaseClosed(task.text) ? 'inline-flex' : 'none';
+  }
+  title.oninput = ()=>{ task.text = title.value; save(); if(showAllTodo) renderAllTodos(); updateCaseBadge(); applyOverdueState(); };
   top.appendChild(title);
+  updateCaseBadge();
+  top.appendChild(caseBadge);
 
   const overdueBadge = document.createElement('span');
   overdueBadge.className = 'overdue-badge';
@@ -699,7 +726,7 @@ function renderTaskRow(task, arr){
   top.appendChild(overdueBadge);
 
   function applyOverdueState(){
-    const isOD = !!(task.eventAt && !task.done && !isTagClosed(task.tag) && triggerAt(task) && triggerAt(task) <= new Date());
+    const isOD = !!(task.eventAt && !task.done && !isCaseClosed(task.text) && triggerAt(task) && triggerAt(task) <= new Date());
     row.classList.toggle('overdue', isOD);
     overdueBadge.style.display = isOD ? 'inline-flex' : 'none';
   }
@@ -762,7 +789,7 @@ function renderTaskRow(task, arr){
   if(!task.tag) noneOpt.selected = true;
   tagSelect.onchange = ()=>{
     if(tagSelect.value === '__new__'){
-      const name = prompt('請輸入新的標籤名稱：');
+      const name = prompt('請輸入新標籤名稱：');
       if(name && name.trim()){
         const t = name.trim();
         if(!tagList.includes(t)) tagList.push(t);
@@ -879,33 +906,80 @@ function renderHeatStrip(){
 function renderTagView(){
   const view = document.getElementById('tagView');
   view.innerHTML = '';
+
+  // 搜尋／篩選列（每次重繪都會重建，狀態存在外部變數裡）
+  const controlCard = document.createElement('div');
+  controlCard.className = 'card';
+  const searchRow = document.createElement('div');
+  searchRow.className = 'search-row';
+  searchRow.innerHTML = `<span>🔍</span>`;
+  const caseSearchInput = document.createElement('input');
+  caseSearchInput.type = 'text';
+  caseSearchInput.placeholder = '輸入案名關鍵字搜尋（含已結案的案子）...';
+  caseSearchInput.value = caseSearchQuery;
+  caseSearchInput.oninput = ()=>{ caseSearchQuery = caseSearchInput.value; renderTagView(); };
+  searchRow.appendChild(caseSearchInput);
+  controlCard.appendChild(searchRow);
+
+  const toggleRow = document.createElement('div');
+  toggleRow.style.textAlign = 'center';
+  toggleRow.style.marginTop = '10px';
+  const closedToggleBtn = document.createElement('button');
+  closedToggleBtn.className = 'toggle-btn' + (showClosedCases ? ' active' : '');
+  closedToggleBtn.style.fontSize = '0.8em';
+  closedToggleBtn.textContent = showClosedCases ? '👁️ 只看進行中案件' : '📁 顯示已結案案件';
+  closedToggleBtn.onclick = ()=>{ showClosedCases = !showClosedCases; renderTagView(); };
+  toggleRow.appendChild(closedToggleBtn);
+  controlCard.appendChild(toggleRow);
+  view.appendChild(controlCard);
+
   const groups = {};
+  let closedCount = 0;
   Object.keys(data).sort().forEach(key=>{
     const [y,m] = key.split('-').map(Number);
     const monthData = data[key];
     Object.keys(monthData).map(Number).sort((a,b)=>a-b).forEach(d=>{
       monthData[d].forEach(task=>{
         if(hideDone && task.done) return;
-        const g = task.tag || '未分類';
+        const g = (task.text||'').trim() || '（未命名項目）';
         if(!groups[g]) groups[g]=[];
         groups[g].push({y,m,d,task,arr:monthData[d]});
       });
     });
   });
-  const tagNames = Object.keys(groups).sort((a,b)=>{
-    if(a==='未分類') return 1;
-    if(b==='未分類') return -1;
-    return a.localeCompare(b);
+  let caseNames = Object.keys(groups).sort((a,b)=>{
+    if(a==='（未命名項目）') return 1;
+    if(b==='（未命名項目）') return -1;
+    return a.localeCompare(b,'zh-Hant');
   });
-  if(tagNames.length===0){
+
+  const q = caseSearchQuery.trim().toLowerCase();
+  caseNames = caseNames.filter(caseName=>{
+    const closed = caseName!=='（未命名項目）' && isCaseClosed(caseName);
+    if(closed) closedCount++;
+    if(q) return caseName.toLowerCase().includes(q);
+    return showClosedCases ? true : !closed;
+  });
+
+  const summary = document.createElement('div');
+  summary.style.textAlign='center';
+  summary.style.fontSize='0.78em';
+  summary.style.color='var(--text-light)';
+  summary.style.marginBottom='12px';
+  summary.textContent = q
+    ? `搜尋到 ${caseNames.length} 個符合的案件`
+    : (showClosedCases ? `顯示全部 ${caseNames.length} 個案件` : `${caseNames.length} 個進行中案件（另有 ${closedCount} 個已結案未顯示，可搜尋或點上方按鈕查看）`);
+  view.appendChild(summary);
+
+  if(caseNames.length===0){
     const none = document.createElement('div');
     none.className='card';
-    none.innerHTML = '<div class="no-hit">目前沒有符合條件的項目</div>';
+    none.innerHTML = '<div class="no-hit">沒有符合條件的案件</div>';
     view.appendChild(none);
     return;
   }
-  tagNames.forEach(tag=>{
-    const closed = tag!=='未分類' && isTagClosed(tag);
+  caseNames.forEach(caseName=>{
+    const closed = caseName!=='（未命名項目）' && isCaseClosed(caseName);
     const wrap = document.createElement('div');
     wrap.className='card tag-group';
     if(closed) wrap.style.opacity='0.6';
@@ -920,19 +994,19 @@ function renderTagView(){
     const head = document.createElement('div');
     head.className='tag-group-head';
     head.style.marginBottom='0';
-    head.style.background = tag==='未分類' ? '#b7c9c5' : tagColor(tag);
-    head.textContent = `${tag}（${groups[tag].length}）${closed?'　✅ 已結案':''}`;
+    head.style.background = caseName==='（未命名項目）' ? '#b7c9c5' : caseColor(caseName);
+    head.textContent = `${caseName}（${groups[caseName].length}）${closed?'　✅ 已結案':''}`;
     headRow.appendChild(head);
 
-    if(tag!=='未分類'){
+    if(caseName!=='（未命名項目）'){
       const statusBtn = document.createElement('button');
       statusBtn.className='toggle-btn';
       statusBtn.style.padding='4px 12px';
       statusBtn.style.fontSize='0.78em';
       statusBtn.textContent = closed ? '↩️ 重新開啟' : '✅ 整案結案';
       statusBtn.onclick = ()=>{
-        tagStatus[tag] = !closed;
-        saveTagStatus();
+        caseStatus[caseName] = !closed;
+        saveCaseStatus();
         refreshAll();
       };
       headRow.appendChild(statusBtn);
@@ -941,7 +1015,7 @@ function renderTagView(){
     wrap.appendChild(headRow);
     const listWrap = document.createElement('div');
     listWrap.style.marginTop='8px';
-    groups[tag].forEach(item=>{
+    groups[caseName].forEach(item=>{
       const el = document.createElement('div');
       el.className='list-hit';
       const cb = document.createElement('div');
@@ -950,7 +1024,11 @@ function renderTagView(){
       cb.onclick = ()=>{ item.task.done=!item.task.done; save(); refreshAll(); };
       const info = document.createElement('div');
       info.className='info';
-      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.text||'（未命名項目）')}</span>`;
+      let tagChipHtml = '';
+      if(item.task.tag){
+        tagChipHtml = `<span class="tag-chip" style="background:${tagColor(item.task.tag)};margin-left:8px;">${escapeHtml(item.task.tag)}</span>`;
+      }
+      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet">${escapeHtml(item.task.detail || '（無細節）')}</span>${tagChipHtml}`;
       info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
       el.appendChild(cb); el.appendChild(info);
       listWrap.appendChild(el);
@@ -1051,7 +1129,7 @@ function renderAllTodos(){
     const monthData = data[key];
     Object.keys(monthData).map(Number).sort((a,b)=>a-b).forEach(d=>{
       monthData[d].forEach(task=>{
-        if(!task.done && task.eventAt && !isTagClosed(task.tag)) items.push({y,m,d,task});
+        if(!task.done && task.eventAt && !isCaseClosed(task.text)) items.push({y,m,d,task});
       });
     });
   });
@@ -1182,7 +1260,7 @@ function checkReminders(){
   const now = new Date();
   findAllTasksFlat().forEach(item=>{
     const t = item.task;
-    if(!t.eventAt || t.reminderDone || t.done || isTagClosed(t.tag)) return;
+    if(!t.eventAt || t.reminderDone || t.done || isCaseClosed(t.text)) return;
     if(activePopupIds.has(String(t.id))) return;
     const trig = triggerAt(t);
     if(trig && trig <= now){
@@ -1242,7 +1320,7 @@ function showPopup(item){
 
 /* ---------- 匯出／匯入備份 ---------- */
 document.getElementById('exportBtn').addEventListener('click', ()=>{
-  const payload = JSON.stringify({ data, tagList, tagColors, tagStatus }, null, 2);
+  const payload = JSON.stringify({ data, tagList, tagColors, tagStatus, caseStatus }, null, 2);
   const blob = new Blob([payload], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1273,10 +1351,12 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
       tagList = obj.tagList || [];
       tagColors = obj.tagColors || {};
       tagStatus = obj.tagStatus || {};
+      caseStatus = obj.caseStatus || {};
       localStorage.setItem(LS_KEY, JSON.stringify(data));
       localStorage.setItem(TAGS_KEY, JSON.stringify(tagList));
       localStorage.setItem(TAG_COLOR_KEY, JSON.stringify(tagColors));
       localStorage.setItem(TAG_STATUS_KEY, JSON.stringify(tagStatus));
+      localStorage.setItem(CASE_STATUS_KEY, JSON.stringify(caseStatus));
       schedulePush();
       refreshAll();
       alert('匯入完成！');
