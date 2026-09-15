@@ -333,6 +333,7 @@
 </div>
 
 <div id="popupStack"></div>
+<datalist id="caseNameList"></datalist>
 
 <script>
 const LS_KEY = 'worklog_data_v1';
@@ -382,6 +383,25 @@ function getAllTags(){
     });
   });
   return Array.from(set).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+function getAllCaseNames(){
+  const set = new Set();
+  Object.values(data).forEach(monthData=>{
+    Object.values(monthData).forEach(arr=>{
+      arr.forEach(t=>{ const v=(t.text||'').trim(); if(v) set.add(v); });
+    });
+  });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+function refreshCaseDatalist(){
+  const list = document.getElementById('caseNameList');
+  if(!list) return;
+  list.innerHTML = '';
+  getAllCaseNames().forEach(name=>{
+    const opt = document.createElement('option');
+    opt.value = name;
+    list.appendChild(opt);
+  });
 }
 function renderTagManage(){
   const box = document.getElementById('tagChipList');
@@ -613,6 +633,7 @@ function initControls(){
 }
 
 function refreshAll(){
+  refreshCaseDatalist();
   if(viewMode==='date'){
     renderMonth();
     renderHeatStrip();
@@ -711,6 +732,7 @@ function renderTaskRow(task, arr){
   title.className='task-title';
   title.value = task.text || '';
   title.placeholder='專案／任務名稱...';
+  title.setAttribute('list', 'caseNameList');
 
   const caseBadge = document.createElement('span');
   caseBadge.className='overdue-badge';
@@ -762,6 +784,48 @@ function renderTaskRow(task, arr){
   const expandBtn = document.createElement('button');
   expandBtn.className='expand-btn';
   top.appendChild(expandBtn);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className='expand-btn';
+  copyBtn.textContent='📋';
+  copyBtn.title='複製到今天';
+  copyBtn.onclick = ()=>{
+    const now = new Date();
+    const ty = now.getFullYear(), tm = now.getMonth()+1, td = now.getDate();
+    const tKey = monthKey(ty, tm);
+    const tMonthData = ensureMonth(tKey);
+    if(!tMonthData[td]) tMonthData[td] = [];
+    const newTask = {
+      id: Date.now()+Math.random(),
+      text: task.text || '',
+      detail: '',
+      tag: task.tag || '',
+      done: false,
+      eventAt: '',
+      leadH: 0,
+      leadM: 0,
+      reminderDone: false
+    };
+    tMonthData[td].push(newTask);
+    expandedTaskIds.add(String(newTask.id));
+    save();
+    curYear = ty; curMonth = tm;
+    document.getElementById('yearInput').value = curYear;
+    document.getElementById('monthInput').value = curMonth;
+    viewMode = 'date';
+    setActiveViewButtons();
+    renderMonth();
+    renderHeatStrip();
+    setTimeout(()=>{
+      const targetEl = document.getElementById(`day-${ty}-${tm}-${td}`);
+      if(targetEl){
+        targetEl.scrollIntoView({behavior:'smooth', block:'center'});
+        targetEl.classList.add('flash');
+        setTimeout(()=>targetEl.classList.remove('flash'), 1200);
+      }
+    }, 50);
+  };
+  top.appendChild(copyBtn);
 
   const del = document.createElement('button');
   del.className='del-btn'; del.textContent='✕';
@@ -1464,6 +1528,7 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
 })();
 
 initControls();
+refreshCaseDatalist();
 renderMonth();
 renderHeatStrip();
 initSync();
