@@ -237,11 +237,15 @@
   /* 右下角提醒彈窗 */
   #popupStack{
     position:fixed;right:16px;bottom:16px;z-index:1000;
-    display:flex;flex-direction:column;gap:12px;align-items:flex-end;
+    display:flex;flex-direction:column-reverse;gap:12px;align-items:flex-end;
+    max-height:80vh;overflow-y:auto;overflow-x:hidden;
+    padding:4px;
   }
+  #popupStack::-webkit-scrollbar{width:6px;}
+  #popupStack::-webkit-scrollbar-thumb{background:var(--mint-dark);border-radius:6px;}
   .reminder-popup{
     background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(63,182,201,0.35);
-    border:2px solid var(--mint-dark);padding:14px 16px;width:280px;
+    border:2px solid var(--mint-dark);padding:14px 16px;width:280px;flex:0 0 auto;
     animation:slideIn .3s ease-out;
   }
   @keyframes slideIn{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);}}
@@ -1422,6 +1426,7 @@ function showPopup(item){
       <button class="rp-btn confirm">✅ 好，知道了</button>
       <button class="rp-btn snooze">⏳ 延後提醒</button>
     </div>
+    <button class="rp-btn jump" style="width:100%;margin-top:8px;background:var(--sea-light);color:var(--sea-dark);">📍 前往卡片</button>
     <div class="snooze-panel">
       <div class="snooze-row">
         <input type="number" class="snooze-h" min="0" value="0"><span>小時</span>
@@ -1439,6 +1444,11 @@ function showPopup(item){
   };
   pop.querySelector('.snooze').onclick = ()=>{
     pop.querySelector('.snooze-panel').classList.toggle('show');
+  };
+  pop.querySelector('.jump').onclick = ()=>{
+    viewMode = 'date';
+    setActiveViewButtons();
+    jumpTo(item.y, item.m, item.d);
   };
   pop.querySelector('.snooze-apply').onclick = ()=>{
     const h = Number(pop.querySelector('.snooze-h').value)||0;
