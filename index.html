@@ -891,7 +891,11 @@ function renderTaskRow(task, arr){
   detail.rows = 2;
   detail.value = task.detail || '';
   detail.placeholder='細節、備註...';
-  detail.oninput = ()=>{ task.detail = detail.value; save(); };
+  function autoSizeDetail(){
+    detail.style.height = 'auto';
+    detail.style.height = detail.scrollHeight + 'px';
+  }
+  detail.oninput = ()=>{ task.detail = detail.value; save(); autoSizeDetail(); };
   expand.appendChild(detail);
 
   const remRow = document.createElement('div');
@@ -945,12 +949,14 @@ function renderTaskRow(task, arr){
     if(v){ expandedTaskIds.add(String(task.id)); expandBtn.textContent='▾'; }
     else { expandedTaskIds.delete(String(task.id)); expandBtn.textContent='▸'; }
     expand.classList.toggle('show', v);
+    if(v) autoSizeDetail();
   }
   const initiallyOpen = expandedTaskIds.has(String(task.id));
   expand.classList.toggle('show', initiallyOpen);
   expandBtn.textContent = initiallyOpen ? '▾' : '▸';
   expandBtn.onclick = ()=> setExpanded(!expandedTaskIds.has(String(task.id)));
   bellBtn.onclick = ()=> setExpanded(!expandedTaskIds.has(String(task.id)));
+  if(initiallyOpen) setTimeout(autoSizeDetail, 0);
 
   return row;
 }
