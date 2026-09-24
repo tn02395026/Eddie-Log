@@ -595,6 +595,13 @@ function triggerAt(task){
   base.setMinutes(base.getMinutes() - leadMin);
   return base;
 }
+function clearReminder(task){
+  task.eventAt = '';
+  task.leadH = 0;
+  task.leadM = 0;
+  task.reminderDone = false;
+  activePopupIds.delete(String(task.id));
+}
 function tagColor(tag){
   if(!tag) return '#b7c9c5';
   if(tagColors[tag]) return tagColors[tag];
@@ -720,7 +727,7 @@ function renderTaskRow(task, arr){
   const cb = document.createElement('div');
   cb.className = 'checkbox' + (task.done?' checked':'');
   cb.textContent = task.done ? '✓' : '';
-  cb.onclick = ()=>{ task.done=!task.done; save(); refreshAll(); };
+  cb.onclick = ()=>{ task.done=!task.done; if(task.done) clearReminder(task); save(); refreshAll(); };
   top.appendChild(cb);
 
   let tagChip = null;
@@ -1133,14 +1140,20 @@ function renderTagGroups(){
       cb.className='todo-check';
       cb.style.marginTop='2px';
       if(item.task.done){ cb.style.background='linear-gradient(135deg,var(--sea),var(--mint-dark))'; cb.textContent='✓'; cb.style.color='#fff'; cb.style.fontSize='11px'; cb.style.display='flex'; cb.style.alignItems='center'; cb.style.justifyContent='center'; }
-      cb.onclick = ()=>{ item.task.done=!item.task.done; save(); refreshAll(); };
+      cb.onclick = ()=>{ item.task.done=!item.task.done; if(item.task.done) clearReminder(item.task); save(); refreshAll(); };
       const info = document.createElement('div');
       info.className='info';
       let tagChipHtml = '';
       if(item.task.tag){
         tagChipHtml = `<span class="tag-chip" style="background:${tagColor(item.task.tag)};margin-top:6px;display:inline-block;">${escapeHtml(item.task.tag)}</span>`;
       }
-      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet-wrap">${escapeHtml(item.task.detail || '（無細節）')}</span>${tagChipHtml}`;
+      let rmdHtml = '';
+      if(item.task.eventAt){
+        const trig = triggerAt(item.task);
+        const isOverdue = trig && trig <= new Date() && !item.task.reminderDone;
+        rmdHtml = `<span class="rmd-tag${isOverdue?' overdue':''}">🔔 ${item.task.eventAt.replace('T',' ')}${isOverdue?'　⚠️ 已到提醒時間':''}</span>`;
+      }
+      info.innerHTML = `<span class="date-tag">${item.y}/${item.m}/${item.d}</span><span class="snippet-wrap">${escapeHtml(item.task.detail || '（無細節）')}</span>${tagChipHtml}${rmdHtml}`;
       info.onclick = ()=>{ viewMode='date'; setActiveViewButtons(); jumpTo(item.y,item.m,item.d); };
       el.appendChild(cb); el.appendChild(info);
       listWrap.appendChild(el);
@@ -1319,7 +1332,7 @@ function renderAllTodos(){
 
       const cb = document.createElement('div');
       cb.className='todo-check';
-      cb.onclick = ()=>{ item.task.done=true; save(); refreshAll(); };
+      cb.onclick = ()=>{ item.task.done=true; clearReminder(item.task); save(); refreshAll(); };
 
       const info = document.createElement('div');
       info.className='info';
