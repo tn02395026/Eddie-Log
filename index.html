@@ -189,6 +189,17 @@
     font-family:inherit;font-size:0.82em;border:1px solid var(--mint-dark);border-radius:10px;
     padding:4px 8px;color:var(--text);background:#fbfffd;flex:1;min-width:0;
   }
+  .tag-row.tag-multiselect{flex-direction:column;align-items:flex-start;gap:6px;}
+  .tag-pick-wrap{display:flex;flex-wrap:wrap;gap:6px;}
+  .tag-pick-chip{
+    border:none;border-radius:999px;padding:5px 12px;font-family:inherit;font-size:0.8em;
+    font-weight:700;color:#fff;cursor:pointer;opacity:0.5;
+  }
+  .tag-pick-chip.picked{opacity:1;box-shadow:0 0 0 2px rgba(0,0,0,0.12) inset;}
+  .tag-pick-chip.add{
+    background:var(--mint-light);color:var(--sea-dark);opacity:1;
+    border:1.5px dashed var(--mint-dark);
+  }
   .tag-manage-chip{
     display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;
     color:#fff;font-size:0.82em;font-weight:700;
@@ -379,11 +390,16 @@ function caseColor(name){
   let h=0; for(let i=0;i<name.length;i++) h = (h*31 + name.charCodeAt(i)) >>> 0;
   return TAG_COLORS[h % TAG_COLORS.length];
 }
+function getTaskTags(task){
+  if(Array.isArray(task.tags)) return task.tags.filter(Boolean);
+  if(task.tag) return [task.tag];
+  return [];
+}
 function getAllTags(){
   const set = new Set(tagList);
   Object.values(data).forEach(monthData=>{
     Object.values(monthData).forEach(arr=>{
-      arr.forEach(t=>{ if(t.tag) set.add(t.tag); });
+      arr.forEach(t=>{ getTaskTags(t).forEach(tg=>set.add(tg)); });
     });
   });
   return Array.from(set).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
@@ -678,7 +694,7 @@ function renderMonth(){
       addBtn.className='day-add'; addBtn.textContent='＋';
       addBtn.onclick = ()=>{
         if(!monthData[d]) monthData[d]=[];
-        monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', tag:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
+        monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', tags:[], done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
         save(); refreshAll();
       };
       row.appendChild(addBtn);
@@ -698,7 +714,7 @@ function renderMonth(){
     addBtn.className = 'day-add';
     addBtn.textContent = '＋';
     addBtn.onclick = ()=>{
-      monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', tag:'', done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
+      monthData[d].push({id:Date.now()+Math.random(), text:'', detail:'', tags:[], done:false, eventAt:'', leadH:0, leadM:0, reminderDone:false});
       save(); refreshAll();
     };
     head.appendChild(label);
@@ -730,13 +746,21 @@ function renderTaskRow(task, arr){
   cb.onclick = ()=>{ task.done=!task.done; if(task.done) clearReminder(task); save(); refreshAll(); };
   top.appendChild(cb);
 
-  let tagChip = null;
-  if(task.tag){
-    tagChip = document.createElement('span');
+  const taskTagsNow = getTaskTags(task);
+  const SHOWN_CHIPS = 2;
+  taskTagsNow.slice(0, SHOWN_CHIPS).forEach(tg=>{
+    const tagChip = document.createElement('span');
     tagChip.className='tag-chip';
-    tagChip.style.background = tagColor(task.tag);
-    tagChip.textContent = task.tag;
+    tagChip.style.background = tagColor(tg);
+    tagChip.textContent = tg;
     top.appendChild(tagChip);
+  });
+  if(taskTagsNow.length > SHOWN_CHIPS){
+    const moreChip = document.createElement('span');
+    moreChip.className='tag-chip';
+    moreChip.style.background = '#b7c9c5';
+    moreChip.textContent = `+${taskTagsNow.length - SHOWN_CHIPS}`;
+    top.appendChild(moreChip);
   }
 
   const title = document.createElement('input');
@@ -810,7 +834,7 @@ function renderTaskRow(task, arr){
       id: Date.now()+Math.random(),
       text: task.text || '',
       detail: '',
-      tag: task.tag || '',
+      tags: getTaskTags(task).slice(),
       done: false,
       eventAt: '',
       leadH: 0,
@@ -853,37 +877,55 @@ function renderTaskRow(task, arr){
   expand.className = 'task-expand';
 
   const tagRow = document.createElement('div');
-  tagRow.className = 'tag-row';
-  const tagLbl = document.createElement('span'); tagLbl.className='lbl'; tagLbl.textContent='🏷️ 標籤：';
-  const tagSelect = document.createElement('select');
-  const noneOpt = document.createElement('option'); noneOpt.value=''; noneOpt.textContent='（不分類）';
-  tagSelect.appendChild(noneOpt);
+  tagRow.className = 'tag-row tag-multiselect';
+  const tagLbl = document.createElement('span'); tagLbl.className='lbl'; tagLbl.textContent='🏷️ 標籤（可複選）：';
+  tagRow.appendChild(tagLbl);
+
+  const chipWrap = document.createElement('div');
+  chipWrap.className = 'tag-pick-wrap';
+
+  function toggleTaskTag(tagName){
+    const cur = getTaskTags(task);
+    const idx = cur.indexOf(tagName);
+    if(idx >= 0) cur.splice(idx,1); else cur.push(tagName);
+    task.tags = cur;
+    task.tag = ''; // 舊欄位不再使用，統一改用 tags 陣列
+    save();
+    refreshAll();
+  }
+
   getAllTags().forEach(tagName=>{
-    const opt = document.createElement('option');
-    opt.value = tagName; opt.textContent = tagName;
-    if(task.tag === tagName) opt.selected = true;
-    tagSelect.appendChild(opt);
+    const picked = getTaskTags(task).includes(tagName);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'tag-pick-chip' + (picked ? ' picked' : '');
+    chip.style.background = tagColor(tagName);
+    chip.textContent = (picked ? '✓ ' : '') + tagName;
+    chip.onclick = ()=> toggleTaskTag(tagName);
+    chipWrap.appendChild(chip);
   });
-  const newOpt = document.createElement('option'); newOpt.value='__new__'; newOpt.textContent='＋ 新增標籤...';
-  tagSelect.appendChild(newOpt);
-  if(!task.tag) noneOpt.selected = true;
-  tagSelect.onchange = ()=>{
-    if(tagSelect.value === '__new__'){
-      const name = prompt('請輸入新標籤名稱：');
-      if(name && name.trim()){
-        const t = name.trim();
-        if(!tagList.includes(t)) tagList.push(t);
-        saveTags();
-        task.tag = t;
-        if(typeof showTagManage !== 'undefined' && showTagManage) renderTagManage();
-      }
+
+  const addChip = document.createElement('button');
+  addChip.type = 'button';
+  addChip.className = 'tag-pick-chip add';
+  addChip.textContent = '＋ 新增標籤';
+  addChip.onclick = ()=>{
+    const name = prompt('請輸入新標籤名稱：');
+    if(name && name.trim()){
+      const t = name.trim();
+      if(!tagList.includes(t)) tagList.push(t);
+      saveTags();
+      const cur = getTaskTags(task);
+      if(!cur.includes(t)) cur.push(t);
+      task.tags = cur;
+      task.tag = '';
+      if(typeof showTagManage !== 'undefined' && showTagManage) renderTagManage();
       save(); refreshAll();
-      return;
     }
-    task.tag = tagSelect.value;
-    save(); refreshAll();
   };
-  tagRow.appendChild(tagLbl); tagRow.appendChild(tagSelect);
+  chipWrap.appendChild(addChip);
+
+  tagRow.appendChild(chipWrap);
   expand.appendChild(tagRow);
 
   const detail = document.createElement('textarea');
@@ -1149,10 +1191,9 @@ function renderTagGroups(){
       cb.onclick = ()=>{ item.task.done=!item.task.done; if(item.task.done) clearReminder(item.task); save(); refreshAll(); };
       const info = document.createElement('div');
       info.className='info';
-      let tagChipHtml = '';
-      if(item.task.tag){
-        tagChipHtml = `<span class="tag-chip" style="background:${tagColor(item.task.tag)};margin-top:6px;display:inline-block;">${escapeHtml(item.task.tag)}</span>`;
-      }
+      const tagChipHtml = getTaskTags(item.task).map(tg=>
+        `<span class="tag-chip" style="background:${tagColor(tg)};margin-top:6px;margin-right:4px;display:inline-block;">${escapeHtml(tg)}</span>`
+      ).join('');
       let rmdHtml = '';
       if(item.task.eventAt){
         const trig = triggerAt(item.task);
