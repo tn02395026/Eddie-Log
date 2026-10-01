@@ -189,8 +189,14 @@
     font-family:inherit;font-size:0.82em;border:1px solid var(--mint-dark);border-radius:10px;
     padding:4px 8px;color:var(--text);background:#fbfffd;flex:1;min-width:0;
   }
-  .tag-row.tag-multiselect{flex-direction:column;align-items:flex-start;gap:6px;}
-  .tag-pick-wrap{display:flex;flex-wrap:wrap;gap:6px;}
+  .tag-row.tag-multiselect{flex-direction:column;align-items:flex-start;gap:0;}
+  .tag-picker-summary{
+    font-family:inherit;font-size:0.82em;color:var(--sea-dark);background:#fbfffd;
+    border:1px solid var(--mint-dark);border-radius:10px;padding:5px 10px;cursor:pointer;
+    text-align:left;width:100%;
+  }
+  .tag-pick-wrap{display:none;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .tag-pick-wrap.show{display:flex;}
   .tag-pick-chip{
     border:none;border-radius:999px;padding:5px 12px;font-family:inherit;font-size:0.8em;
     font-weight:700;color:#fff;cursor:pointer;opacity:0.5;
@@ -363,6 +369,7 @@ let caseSearchQuery = '';
 let showClosedCases = false;
 const activePopupIds = new Set();
 const expandedTaskIds = new Set();
+const tagPickOpenIds = new Set();
 let overdueUpdaters = [];
 const weekdays = ['日','一','二','三','四','五','六'];
 const TAG_COLORS = ['#3fb6c9','#4fae82','#e0a951','#ba68c8','#ec6f8e','#7986cb','#8d6e63','#4db6ac',
@@ -878,11 +885,24 @@ function renderTaskRow(task, arr){
 
   const tagRow = document.createElement('div');
   tagRow.className = 'tag-row tag-multiselect';
-  const tagLbl = document.createElement('span'); tagLbl.className='lbl'; tagLbl.textContent='🏷️ 標籤（可複選）：';
-  tagRow.appendChild(tagLbl);
+
+  const summaryBtn = document.createElement('button');
+  summaryBtn.type = 'button';
+  summaryBtn.className = 'tag-picker-summary';
+  function updateSummary(){
+    const cur = getTaskTags(task);
+    summaryBtn.textContent = (cur.length ? '🏷️ ' + cur.join('、') : '🏷️ 點選設定標籤') + (tagPickOpenIds.has(String(task.id)) ? '  ▴' : '  ▾');
+  }
+  summaryBtn.onclick = ()=>{
+    const id = String(task.id);
+    if(tagPickOpenIds.has(id)) tagPickOpenIds.delete(id); else tagPickOpenIds.add(id);
+    chipWrap.classList.toggle('show', tagPickOpenIds.has(id));
+    updateSummary();
+  };
+  tagRow.appendChild(summaryBtn);
 
   const chipWrap = document.createElement('div');
-  chipWrap.className = 'tag-pick-wrap';
+  chipWrap.className = 'tag-pick-wrap' + (tagPickOpenIds.has(String(task.id)) ? ' show' : '');
 
   function toggleTaskTag(tagName){
     const cur = getTaskTags(task);
@@ -925,6 +945,7 @@ function renderTaskRow(task, arr){
   };
   chipWrap.appendChild(addChip);
 
+  updateSummary();
   tagRow.appendChild(chipWrap);
   expand.appendChild(tagRow);
 
